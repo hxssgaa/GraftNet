@@ -1,6 +1,27 @@
 import json
 import os
+from string import punctuation
+
 import numpy as np
+import wordninja
+from tqdm import tqdm
+
+
+def clean_text(text, filter_dot=False):
+    text = text.replace('.', ' . ').lower()
+    for punc in punctuation:
+        if punc != '.':
+            text = text.replace(punc, " ")
+    text = text.split()
+    output = []
+    for i in text:
+        if len(i) < 10:
+            output.append(i)
+        else:
+            output.extend(wordninja.split(i))
+    if filter_dot:
+        return [e for e in text if e != '.']
+    return text
 
 
 def save_json(list_, name):
@@ -22,7 +43,8 @@ def process_entities():
     entities = set()
     for q in data:
         entities.update(q['subgraph']['entities'])
-    entities.update(load_json('datasets/complexwebq/ground_truth_entities.json'))
+    # ground_truth_entities = set(load_json('datasets/complexwebq/ground_truth_entities.json'))
+    # entities.update(ground_truth_entities)
     entities = list(sorted(entities))
     with open('datasets/complexwebq/entities.txt', 'w') as f:
         for e in entities:
@@ -30,11 +52,11 @@ def process_entities():
                 f.writelines(e + '\n')
 
 
-def process_vocab():
-    vocab2id = load_json('datasets/complexwebq/vocab2id.json')
-    with open('datasets/complexwebq/vocab.txt', 'w') as f:
-        for e in vocab2id:
-            f.writelines(e + '\n')
+# def process_vocab():
+#     vocab2id = load_json('datasets/complexwebq/vocab2id.json')
+#     with open('datasets/complexwebq/vocab.txt', 'w') as f:
+#         for e in vocab2id:
+#             f.writelines(e + '\n')
 
 
 def process_relations():
@@ -96,5 +118,39 @@ def analyse_testing_recall():
     print(avg_recall / total)
 
 
+def process_vocab(embeddings_file):
+    word2vec = {}
+    with open(embeddings_file) as f:
+        for line in tqdm(f):
+            word, vec = line.strip().split(None, 1)
+            word2vec[word] = np.array([float(vv) for vv in vec.split()])
+    train_data = load_json('datasets/complexwebq/train.json')
+    dev_data = load_json('datasets/complexwebq/dev.json')
+    test_data = load_json('datasets/complexwebq/test.json')
+    corpus = set()
+    dev_corpus = set()
+    test_corpus = set()
+    for q in train_data:
+        processed_question = clean_text(q['question'])
+        corpus.update(processed_question)
+    for q in dev_data:
+        processed_question = clean_text(q['question'])
+        dev_corpus.update(processed_question)
+    for q in test_data:
+        processed_question = clean_text(q['question'])
+        test_corpus.update(processed_question)
+    corpus.add('__unk__')
+    corpus_list = list(sorted(corpus))
+    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 100) for word in corpus_list])
+    with open('datasets/complexwebq/vocab.txt', 'w') as f:
+        for e in corpus_list:
+            f.writelines(e + '\n')
+    np.save('datasets/complexwebq/word_emb_100d.npy', word_emb_npy)
+    print('train emb coverage: ', len(corpus & set(word2vec.keys())) / len(corpus))
+    print('dev coverage: ', len(corpus & dev_corpus) / len(dev_corpus))
+    print('test coverage: ', len(corpus & test_corpus) / len(test_corpus))
+
+
 if __name__ == '__main__':
+    # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
     process_entities()

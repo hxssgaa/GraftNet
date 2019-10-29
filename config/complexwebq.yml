@@ -28,7 +28,7 @@ max_query_word: 10
 max_document_word: 50
 
 entity_dim: 50
-word_dim: 300
+word_dim: 100
 kge_dim: 100
 pagerank_lambda: 0.8
 fact_scale: 3

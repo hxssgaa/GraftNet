@@ -2,6 +2,8 @@ import json
 import numpy as np
 
 from scipy.sparse import coo_matrix, csr_matrix
+
+from preprocessing.process_complex_webq import clean_text
 from util import load_dict, load_json
 from tqdm import tqdm
 
@@ -126,8 +128,9 @@ class DataLoader():
                     entity_pos_word_weights += word_weights
 
             # tokenize question
-            count_query_length[len(sample['question'].split())] += 1
-            for j, word in enumerate(sample['question'].split()):
+            question_word_spt = clean_text(sample['question'])
+            count_query_length[len(question_word_spt)] += 1
+            for j, word in enumerate(question_word_spt):
                 if j < self.max_query_word:
                     if word in self.word2id:
                         self.query_texts[next_id, j] = self.word2id[word]
