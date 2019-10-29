@@ -17,24 +17,30 @@ def train(cfg):
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
 
-    train_documents = load_documents(cfg['data_folder'] + cfg['train_documents'])
-    train_document_entity_indices, train_document_texts = index_document_entities(train_documents, word2id, entity2id, cfg['max_document_word'])
+    train_documents = load_documents(cfg['data_folder'] + cfg['train_documents']) if cfg['use_doc'] else None
+    train_document_entity_indices, train_document_texts = index_document_entities(train_documents, word2id, entity2id, cfg['max_document_word']) if cfg['use_doc'] else None, None
     train_data = DataLoader(cfg['data_folder'] + cfg['train_data'], train_documents, train_document_entity_indices, train_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation']) 
-    
-    if cfg['dev_documents'] != cfg['train_documents']:
-        valid_documents = load_documents(cfg['data_folder'] + cfg['dev_documents'])
-        valid_document_entity_indices, valid_document_texts = index_document_entities(valid_documents, word2id, entity2id, cfg['max_document_word'])
+
+    if cfg['use_doc']:
+        if cfg['dev_documents'] != cfg['train_documents']:
+            valid_documents = load_documents(cfg['data_folder'] + cfg['dev_documents'])
+            valid_document_entity_indices, valid_document_texts = index_document_entities(valid_documents, word2id, entity2id, cfg['max_document_word'])
+        else:
+            valid_documents = train_documents
+            valid_document_entity_indices, valid_document_texts = train_document_entity_indices, train_document_texts
     else:
-        valid_documents = train_documents
-        valid_document_entity_indices, valid_document_texts = train_document_entity_indices, train_document_texts
+        valid_documents, valid_document_entity_indices, valid_document_texts = None, None, None
     valid_data = DataLoader(cfg['data_folder'] + cfg['dev_data'], valid_documents, valid_document_entity_indices, valid_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
-    
-    if cfg['test_documents'] != cfg['dev_documents']:
-        test_documents = load_documents(cfg['data_folder'] + cfg['test_documents'])
-        test_document_entity_indices, test_document_texts = index_document_entities(test_documents, word2id, entity2id, cfg['max_document_word'])
+
+    if cfg['use_doc']:
+        if cfg['test_documents'] != cfg['dev_documents']:
+            test_documents = load_documents(cfg['data_folder'] + cfg['test_documents'])
+            test_document_entity_indices, test_document_texts = index_document_entities(test_documents, word2id, entity2id, cfg['max_document_word'])
+        else:
+            test_documents = valid_documents
+            test_document_entity_indices, test_document_texts = valid_document_entity_indices, valid_document_texts
     else:
-        test_documents = valid_documents
-        test_document_entity_indices, test_document_texts = valid_document_entity_indices, valid_document_texts
+        test_documents, test_document_entity_indices, test_document_texts = None, None, None
     test_data = DataLoader(cfg['data_folder'] + cfg['test_data'], test_documents, test_document_entity_indices, test_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
     # create model & set parameters
@@ -55,7 +61,7 @@ def train(cfg):
                 loss, pred, _ = my_model(batch)
                 pred = pred.data.cpu().numpy()
                 acc, max_acc = cal_accuracy(pred, batch[-1])
-                train_loss.append(loss.data[0])
+                train_loss.append(loss.item())
                 train_acc.append(acc)
                 train_max_acc.append(max_acc)
                 # back propogate
@@ -103,7 +109,7 @@ def inference(my_model, valid_data, entity2id, cfg, log_info=False):
         acc, max_acc = cal_accuracy(pred, batch[-1])
         if log_info: 
             output_pred_dist(pred_dist, batch[-1], id2entity, iteration * test_batch_size, valid_data, f_pred)
-        eval_loss.append(loss.data[0])
+        eval_loss.append(loss.item())
         eval_acc.append(acc)
         eval_max_acc.append(max_acc)
 
@@ -118,8 +124,8 @@ def test(cfg):
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
 
-    test_documents = load_documents(cfg['data_folder'] + cfg['test_documents'])
-    test_document_entity_indices, test_document_texts = index_document_entities(test_documents, word2id, entity2id, cfg['max_document_word'])
+    test_documents = load_documents(cfg['data_folder'] + cfg['test_documents']) if cfg['use_doc'] else None
+    test_document_entity_indices, test_document_texts = index_document_entities(test_documents, word2id, entity2id, cfg['max_document_word']) if cfg['use_doc'] else None, None
     test_data = DataLoader(cfg['data_folder'] + cfg['test_data'], test_documents, test_document_entity_indices, test_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
     my_model = get_model(cfg, test_data.num_kb_relation, len(entity2id), len(word2id))

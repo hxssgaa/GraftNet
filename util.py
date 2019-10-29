@@ -38,7 +38,7 @@ def load_dict(filename):
     word2id = dict()
     with open(filename) as f_in:
         for line in f_in:
-            word = line.strip().decode('UTF-8')
+            word = line.strip()
             word2id[word] = len(word2id)
     return word2id
 
@@ -120,7 +120,7 @@ def output_pred_dist(pred_dist, answer_dist, id2entity, start_id, data_loader, f
         data_id = start_id + i
         l2g = {l:g for g, l in data_loader.global2local_entity_maps[data_id].items()}
         output_dist = {id2entity[l2g[j]]: float(prob) for j, prob in enumerate(p_dist.data.cpu().numpy()) if j < len(l2g)}
-        answers = [answer['text'] if type(answer['kb_id']) == int else answer['kb_id'] for answer in data_loader.data[data_id]['answers']]
+        answers = [answer['text'] if type(answer['answer_id']) == int else answer['answer_id'] for answer in data_loader.data[data_id]['answers']]
         f_pred.write(json.dumps({'dist': output_dist, 'answers':answers, 'seeds': data_loader.data[data_id]['entities'], 'tuples': data_loader.data[data_id]['subgraph']['tuples']}) + '\n')
 
 class LeftMMFixed(torch.autograd.Function):
@@ -205,6 +205,20 @@ def read_padded(my_lstm, document_emb, document_mask):
     assert (num_document, max_document_word, hidden_size * num_layer) == document_emb.size()
 
     return document_emb, hidden
+
+
+def save_json(list_, name):
+    with open(name, 'w') as f:
+        json.dump(list_, f)
+
+
+def load_json(file):
+    try:
+        with open(file, 'r') as f:
+            data = json.load(f)
+    except Exception as e:
+        raise e
+    return data
 
 
 if __name__  == "__main__":

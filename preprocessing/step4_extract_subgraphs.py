@@ -12,14 +12,14 @@ format as the input json but with an extra field `subgraph` which lists the
 relations and entities associated with the question.
 """
 
-question_json = "scratch/webqsp_processed.json"
+question_json = "preprocessing/scratch/webqsp_processed.json"
 output_json = "webqsp_subgraphs.json"
 
 # fixed files
-subgraph_dir = "freebase_2hops/stagg.neighborhoods/"
-question_seeds = "scratch/stagg_linked_questions.txt"
-question_emb = "scratch/webqsp_embeddings.pkl"
-relation_emb = "scratch/relation_emb.pkl"
+subgraph_dir = "preprocessing/freebase_2hops/stagg.neighborhoods/"
+question_seeds = "preprocessing/scratch/stagg_linked_questions.txt"
+question_emb = "preprocessing/scratch/webqsp_embeddings.pkl"
+relation_emb = "preprocessing/scratch/relation_emb.pkl"
 
 import os
 import json

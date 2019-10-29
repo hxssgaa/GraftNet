@@ -1,11 +1,8 @@
-name: 'webqsp'
-data_folder: 'datasets/webqsp/full/'
+name: 'complexwebq'
+data_folder: 'datasets/complexwebq/'
 train_data: 'train.json'
-train_documents: 'documents.json'
 dev_data: 'dev.json'
-dev_documents: 'documents.json'
 test_data: 'test.json'
-test_documents: 'documents.json'
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
@@ -17,9 +14,9 @@ relation_emb_file: #"relation_emb_100d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 
 to_save_model: True
-save_model_file: "model/webqsp/best_model_hybrid"
-pred_file: "model/webqsp/pred_hybrid"
-load_model_file: #"model/webqsp/best_model_hybrid"
+save_model_file: "model/complexwebq/best_model_hybrid"
+pred_file: "model/complexwebq/pred_hybrid"
+load_model_file: #"model/complexwebq/best_model_hybrid"
 
 # graph options
 fact_dropout: 0.1
@@ -31,7 +28,7 @@ max_query_word: 10
 max_document_word: 50
 
 entity_dim: 50
-word_dim: 100
+word_dim: 300
 kge_dim: 100
 pagerank_lambda: 0.8
 fact_scale: 3

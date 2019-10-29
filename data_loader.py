@@ -2,7 +2,7 @@ import json
 import numpy as np
 
 from scipy.sparse import coo_matrix, csr_matrix
-from util import load_dict
+from util import load_dict, load_json
 from tqdm import tqdm
 
 class DataLoader():
@@ -25,12 +25,14 @@ class DataLoader():
 
         print('loading data from', data_file)
         self.data = []
-        with open(data_file) as f_in:
-            for line in tqdm(f_in):
-                line = json.loads(line)
-                self.data.append(line)
-                self.max_relevant_doc = max(self.max_relevant_doc, len(line['passages']))
-                self.max_facts = max(self.max_facts, 2 * len(line['subgraph']['tuples']))
+        f_in = load_json(data_file)
+        # f_in = f_in[:len(f_in) // 2]
+        for line in tqdm(f_in):
+            if 'subgraph' not in line:
+                continue
+            self.data.append(line)
+            self.max_relevant_doc = max(self.max_relevant_doc, len(line['passages'])) if use_doc else None
+            self.max_facts = max(self.max_facts, 2 * len(line['subgraph']['tuples']))
         print('max_relevant_doc: ', self.max_relevant_doc)
         print('max_facts: ', self.max_facts)
         self.num_data = len(self.data)
@@ -57,7 +59,7 @@ class DataLoader():
         self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)
         self.q2e_adj_mats = np.zeros((self.num_data, self.max_local_entity, 1), dtype=float)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-        self.rel_document_ids = np.full((self.num_data, self.max_relevant_doc), -1, dtype=int) # the last document is empty
+        self.rel_document_ids = np.full((self.num_data, self.max_relevant_doc), -1, dtype=int) if use_doc else None# the last document is empty
         self.entity_poses = np.empty(self.num_data, dtype=object)
         self.answer_dists = np.zeros((self.num_data, self.max_local_entity), dtype=float)
         
@@ -90,23 +92,25 @@ class DataLoader():
             if self.use_kb:
                 for i, tpl in enumerate(sample['subgraph']['tuples']):
                     sbj, rel, obj = tpl
+                    if sbj not in self.entity2id or obj not in self.entity2id or rel not in self.relation2id:
+                        continue
                     if not self.use_inverse_relation:
-                        entity2fact_e += [g2l[self.entity2id[sbj['text']]]]
+                        entity2fact_e += [g2l[self.entity2id[sbj]]]
                         entity2fact_f += [i]
                         fact2entity_f += [i]
-                        fact2entity_e += [g2l[self.entity2id[obj['text']]]]
-                        self.kb_fact_rels[next_id, i] = self.relation2id[rel['text']]
+                        fact2entity_e += [g2l[self.entity2id[obj]]]
+                        self.kb_fact_rels[next_id, i] = self.relation2id[rel]
                     else:
-                        entity2fact_e += [g2l[self.entity2id[sbj['text']]], g2l[self.entity2id[obj['text']]]]
+                        entity2fact_e += [g2l[self.entity2id[sbj]], g2l[self.entity2id[obj]]]
                         entity2fact_f += [2 * i, 2 * i + 1]
                         fact2entity_f += [2 * i, 2 * i + 1]
-                        fact2entity_e += [g2l[self.entity2id[obj['text']]], g2l[self.entity2id[sbj['text']]]]
-                        self.kb_fact_rels[next_id, 2 * i] = self.relation2id[rel['text']]
-                        self.kb_fact_rels[next_id, 2 * i + 1] = self.relation2id[rel['text']] + len(self.relation2id)
+                        fact2entity_e += [g2l[self.entity2id[obj]], g2l[self.entity2id[sbj]]]
+                        self.kb_fact_rels[next_id, 2 * i] = self.relation2id[rel]
+                        self.kb_fact_rels[next_id, 2 * i + 1] = self.relation2id[rel] + len(self.relation2id)
                     
             # build connection between question and entities in it
             for j, entity in enumerate(sample['entities']):
-                self.q2e_adj_mats[next_id, g2l[self.entity2id[unicode(entity['text'])]], 0] = 1.0
+                self.q2e_adj_mats[next_id, g2l[self.entity2id[entity]], 0] = 1.0
 
             # connect documents to entities occurred in it
             if self.use_doc:
@@ -129,13 +133,14 @@ class DataLoader():
                         self.query_texts[next_id, j] = self.word2id['__unk__']
 
             # tokenize document
-            for pid, passage in enumerate(sample['passages']):
-                self.rel_document_ids[next_id, pid] = passage['document_id']
+            if self.use_doc:
+                for pid, passage in enumerate(sample['passages']):
+                    self.rel_document_ids[next_id, pid] = passage['document_id']
 
             # construct distribution for answers
             for answer in sample['answers']:
-                keyword = 'text' if type(answer['kb_id']) == int else 'kb_id'
-                if self.entity2id[answer[keyword]] in g2l:
+                keyword = 'answer_id'
+                if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
                     self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
 
             self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int), np.array([1.0] * len(entity2fact_f))), (np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int), np.array([1.0] * len(fact2entity_e)))
@@ -206,6 +211,8 @@ class DataLoader():
 
     def _build_document_text(self, sample_ids):
         """Index tokenized documents for each sample"""
+        if not self.use_doc:
+            return None
         document_text = np.full((len(sample_ids), self.max_relevant_doc, self.max_document_word), len(self.word2id), dtype=int)
         for i, sample_id in enumerate(sample_ids):
             for j, rel_doc_id in enumerate(self.rel_document_ids[sample_id]):
@@ -263,7 +270,12 @@ class DataLoader():
     @staticmethod
     def _add_entity_to_map(entity2id, entities, g2l):
         for entity in entities:
-            entity_text = entity['text']
+            if isinstance(entity, dict):
+                entity_text = entity['text']
+            else:
+                entity_text = entity
+            if entity_text not in entity2id:
+                continue
             entity_global_id = entity2id[entity_text]
             if entity_global_id not in g2l:
                 g2l[entity2id[entity_text]] = len(g2l)
