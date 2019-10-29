@@ -109,7 +109,8 @@ def cal_accuracy(pred, answer_dist):
     num_correct = 0.0
     num_answerable = 0.0
     for i, l in enumerate(pred):
-        num_correct += (answer_dist[i, l] != 0)
+        for e in l:
+            num_correct += (answer_dist[i, e] != 0)
     for dist in answer_dist:
         if np.sum(dist) != 0:
             num_answerable += 1
