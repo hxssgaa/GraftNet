@@ -110,6 +110,8 @@ class DataLoader():
                     
             # build connection between question and entities in it
             for j, entity in enumerate(sample['entities']):
+                if entity not in self.entity2id:
+                    continue
                 self.q2e_adj_mats[next_id, g2l[self.entity2id[entity]], 0] = 1.0
 
             # connect documents to entities occurred in it
