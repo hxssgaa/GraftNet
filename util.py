@@ -106,15 +106,66 @@ def cal_accuracy(pred, answer_dist):
     pred: batch_size
     answer_dist: batch_size, max_local_entity
     """
-    num_correct = 0.0
+    num_hit_at_one = 0.0
+    num_precision = 0.0
+    num_recall = 0.0
+    num_f1 = 0.0
     num_answerable = 0.0
     for i, l in enumerate(pred):
+        num_hit_at_one += (answer_dist[i, l[0]] != 0)
+        precision = 0
         for e in l:
-            num_correct += (answer_dist[i, e] != 0)
+            precision += (answer_dist[i, e] != 0)
+        precision = float(precision) / len(l)
+        recall = 0
+        for j, answer in enumerate(answer_dist[i]):
+            if answer != 0 and j in l:
+                recall += 1
+        recall = float(recall) / np.sum(answer_dist[i]) if np.sum(answer_dist[i]) > 0 else 0
+        f1 = 0
+        if precision + recall > 0:
+            f1 = 2 * recall * precision / (precision + recall)
+        num_precision += precision
+        num_recall += recall
+        num_f1 += f1
     for dist in answer_dist:
         if np.sum(dist) != 0:
             num_answerable += 1
-    return num_correct / len(pred), num_answerable / len(pred)
+    return num_hit_at_one / len(pred), num_precision / len(pred), num_recall / len(pred), num_f1 / len(pred), num_answerable / len(pred)
+
+
+def calc_f1(gold_list, pred_list):
+    """Return a tuple with recall, precision, and f1 for one example"""
+
+    # Assume all questions have at least one answer
+    if len(gold_list) == 0:
+        raise RuntimeError('Gold list may not be empty')
+    # If we return an empty list recall is zero and precision is one
+    if len(pred_list) == 0:
+        return (0, 1, 0)
+    # It is guaranteed now that both lists are not empty
+
+    # Normalize answers
+    gold_list = [normalize_answer(s) for s in gold_list]
+    pred_list = [normalize_answer(s) for s in pred_list]
+
+    precision = 0
+    for entity in pred_list:
+        if entity in gold_list:
+            precision += 1
+    precision = float(precision) / len(pred_list)
+
+    recall = 0
+    for entity in gold_list:
+        if entity in pred_list:
+              recall += 1
+    recall = float(recall) / len(gold_list)
+
+    f1 = 0
+    if precision + recall > 0:
+        f1 = 2 * recall * precision / (precision + recall)
+    return (recall, precision, f1)
+
 
 def output_pred_dist(pred_dist, answer_dist, id2entity, start_id, data_loader, f_pred):
     for i, p_dist in enumerate(pred_dist):

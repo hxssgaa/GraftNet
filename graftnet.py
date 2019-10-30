@@ -296,7 +296,7 @@ class GraftNet(nn.Module):
 
         score = score + (1 - local_entity_mask) * VERY_NEG_NUMBER
         pred_dist = self.sigmoid(score) * local_entity_mask
-        pred = torch.topk(score, 1, dim=1)[1]
+        pred = torch.topk(score, 3, dim=1)[1]
 
         return loss, pred, pred_dist
 

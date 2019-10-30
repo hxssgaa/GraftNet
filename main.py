@@ -55,14 +55,17 @@ def train(cfg):
             train_data.reset_batches(is_sequential = cfg['is_debug'])
             # Train
             my_model.train()
-            train_loss, train_acc, train_max_acc = [], [], []
+            train_loss, train_hit_at_one, train_precision, train_recall, train_f1, train_max_acc = [], [], [], [], [], []
             for iteration in tqdm(range(train_data.num_data // cfg['batch_size'])):
                 batch = train_data.get_batch(iteration, cfg['batch_size'], cfg['fact_dropout'])
                 loss, pred, _ = my_model(batch)
                 pred = pred.data.cpu().numpy()
-                acc, max_acc = cal_accuracy(pred, batch[-1])
+                hit_at_one, precision, recall, f1, max_acc = cal_accuracy(pred, batch[-1])
                 train_loss.append(loss.item())
-                train_acc.append(acc)
+                train_hit_at_one.append(hit_at_one)
+                train_precision.append(precision)
+                train_recall.append(recall)
+                train_f1.append(f1)
                 train_max_acc.append(max_acc)
                 # back propogate
                 my_model.zero_grad()
@@ -72,7 +75,10 @@ def train(cfg):
                 optimizer.step()
             print('avg_training_loss', sum(train_loss) / len(train_loss))
             print('max_training_acc', sum(train_max_acc) / len(train_max_acc))
-            print('avg_training_acc', sum(train_acc) / len(train_acc))
+            print('avg_training_hit@1', sum(train_hit_at_one) / len(train_hit_at_one))
+            print('avg_training_precision', sum(train_precision) / len(train_precision))
+            print('avg_training_recall', sum(train_recall) / len(train_recall))
+            print('avg_training_f1', sum(train_f1) / len(train_f1))
 
             print("validating ...")
             eval_acc = inference(my_model, valid_data, entity2id, cfg)
@@ -96,7 +102,7 @@ def train(cfg):
 def inference(my_model, valid_data, entity2id, cfg, log_info=False):
     # Evaluation
     my_model.eval()
-    eval_loss, eval_acc, eval_max_acc = [], [], []
+    eval_loss, eval_hit_at_one, eval_precision, eval_recall, eval_f1, eval_max_acc = [], [], [], [], [], []
     id2entity = {idx: entity for entity, idx in entity2id.items()}
     valid_data.reset_batches(is_sequential = True)
     test_batch_size = 20
@@ -106,18 +112,24 @@ def inference(my_model, valid_data, entity2id, cfg, log_info=False):
         batch = valid_data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
         loss, pred, pred_dist = my_model(batch)
         pred = pred.data.cpu().numpy()
-        acc, max_acc = cal_accuracy(pred, batch[-1])
+        hit_at_one, precision, recall, f1, max_acc = cal_accuracy(pred, batch[-1])
         if log_info: 
             output_pred_dist(pred_dist, batch[-1], id2entity, iteration * test_batch_size, valid_data, f_pred)
         eval_loss.append(loss.item())
-        eval_acc.append(acc)
+        eval_hit_at_one.append(hit_at_one)
+        eval_precision.append(precision)
+        eval_recall.append(recall)
+        eval_f1.append(f1)
         eval_max_acc.append(max_acc)
 
     print('avg_loss', sum(eval_loss) / len(eval_loss))
     print('max_acc', sum(eval_max_acc) / len(eval_max_acc))
-    print('avg_acc', sum(eval_acc) / len(eval_acc))
+    print('avg_hit@1', sum(eval_hit_at_one) / len(eval_hit_at_one))
+    print('avg_precision', sum(eval_precision) / len(eval_precision))
+    print('avg_recall', sum(eval_recall) / len(eval_recall))
+    print('avg_f1', sum(eval_f1) / len(eval_f1))
 
-    return sum(eval_acc) / len(eval_acc)
+    return sum(eval_precision) / len(eval_precision)
 
 def test(cfg):
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
