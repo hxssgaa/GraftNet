@@ -61,7 +61,7 @@ def train(cfg):
         tracker = xm.RateTracker()
 
         model.train()
-        for x, data in enumerate(loader):
+        for x, (_, data) in enumerate(loader):
             optimizer.zero_grad()
             import pdb; pdb.set_trace()
             loss, pred, _ = model(data)
