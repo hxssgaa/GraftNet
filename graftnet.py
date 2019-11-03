@@ -104,7 +104,7 @@ class GraftNet(nn.Module):
         self.bce_loss = nn.BCELoss()
         self.bce_loss_logits = nn.BCEWithLogitsLoss()
 
-    def forward(self, batch):
+    def forward(self, index, batch):
         """
         :local_entity: global_id of each entity                     (batch_size, max_local_entity)
         :q2e_adj_mat: adjacency matrices (dense)                    (batch_size, max_local_entity, 1)
@@ -134,7 +134,7 @@ class GraftNet(nn.Module):
         local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
         if self.use_doc:
             document_mask = use_cuda((document_text != self.num_word).type('torch.FloatTensor'))
-        # normalized adj matrix
+        # normalized adj matrixf
         pagerank_f = use_cuda(q2e_adj_mat.squeeze(dim=2)).float() # batch_size, max_local_entity
         pagerank_f.requires_grad=True
         with torch.no_grad():
