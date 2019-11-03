@@ -66,8 +66,7 @@ def train(cfg):
             loss, pred, _ = model(data)
             loss.backward()
             torch.nn.utils.clip_grad_norm(my_model.parameters(), cfg['gradient_clip'])
-            # xm.optimizer_step(optimizer)
-            optimizer.step()
+            xm.optimizer_step(optimizer)
             tracker.add(cfg['batch_size'])
             if x % 10 == 0:
                 print('[{}]({}) Loss={:.5f} Rate={:.2f} GlobalRate={:.2f} Time={}\n'.format(
