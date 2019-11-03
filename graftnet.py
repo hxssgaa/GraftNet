@@ -122,27 +122,25 @@ class GraftNet(nn.Module):
 
         # numpy to tensor
         with torch.no_grad():
-            local_entity = use_cuda(Variable(torch.from_numpy(local_entity).type('torch.LongTensor')))
-            query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor')))
+            local_entity = use_cuda(local_entity)
+            query_text = use_cuda(query_text)
             query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
             if self.use_kb:
-                kb_fact_rel = use_cuda(Variable(torch.from_numpy(kb_fact_rel).type('torch.LongTensor')))
+                kb_fact_rel = use_cuda(kb_fact_rel)
             if self.use_doc:
-                document_text = use_cuda(Variable(torch.from_numpy(document_text).type('torch.LongTensor')))
-            answer_dist = use_cuda(
-                Variable(torch.from_numpy(answer_dist).type('torch.FloatTensor')))
+                document_text = use_cuda(document_text)
+            answer_dist = use_cuda(answer_dist)
         local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
         if self.use_doc:
             document_mask = use_cuda((document_text != self.num_word).type('torch.FloatTensor'))
         # normalized adj matrix
-        pagerank_f = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor')).squeeze(dim=2)) # batch_size, max_local_entity
+        pagerank_f = use_cuda(q2e_adj_mat.squeeze(dim=2)) # batch_size, max_local_entity
         pagerank_f.requires_grad=True
         with torch.no_grad():
             pagerank_d = use_cuda(
-                Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'))).squeeze(
-                dim=2)  # batch_size, max_local_entity
-            q2e_adj_mat = use_cuda(
-                Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor')))  # batch_size, max_local_entity, 1
+                q2e_adj_mat.squeeze(
+                dim=2))  # batch_size, max_local_entity
+            q2e_adj_mat = use_cuda(q2e_adj_mat)  # batch_size, max_local_entity, 1
         assert pagerank_f.requires_grad == True
         assert pagerank_d.requires_grad == False
 
@@ -155,12 +153,13 @@ class GraftNet(nn.Module):
         if self.use_kb:
             # build kb_adj_matrix from sparse matrix
             (e2f_batch, e2f_f, e2f_e, e2f_val), (f2e_batch, f2e_e, f2e_f, f2e_val) = kb_adj_mat
-            entity2fact_index = torch.LongTensor([e2f_batch, e2f_f, e2f_e])
+            entity2fact_index = torch.LongTensor(torch.stack([e2f_batch, e2f_f, e2f_e]))
             entity2fact_val = torch.FloatTensor(e2f_val)
+            torch.FloatTensor()
             entity2fact_mat = use_cuda(torch.sparse.FloatTensor(entity2fact_index, entity2fact_val, torch.Size([batch_size, max_fact, max_local_entity]))) # batch_size, max_fact, max_local_entity
 
-            fact2entity_index = torch.LongTensor([f2e_batch, f2e_e, f2e_f])
-            fact2entity_val = torch.FloatTensor(f2e_val)
+            fact2entity_index = torch.stack([f2e_batch, f2e_e, f2e_f])
+            fact2entity_val = f2e_val
             fact2entity_mat = use_cuda(torch.sparse.FloatTensor(fact2entity_index, fact2entity_val, torch.Size([batch_size, max_local_entity, max_fact])))
             
             # load fact embedding
