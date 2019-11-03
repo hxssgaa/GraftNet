@@ -147,6 +147,7 @@ class GraftNet(nn.Module):
             assert pagerank_d.requires_grad == False
 
             # encode query
+            import pdb; pdb.set_trace()
             query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
             query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim, device)) # 1, batch_size, entity_dim
             query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim

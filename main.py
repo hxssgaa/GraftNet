@@ -16,7 +16,7 @@ from util import load_documents, index_document_entities, output_pred_dist
 
 def train(cfg):
     print("training ...")
-    num_cores = 8
+    num_cores = 1
     devices = xm.get_xla_supported_devices(max_devices=num_cores) if num_cores != 0 else []
     print(devices)
 
