@@ -4,6 +4,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 from util import use_cuda, read_padded
 from torch.sparse import mm as sparse_mm
+import torch_xla.core.xla_model as xm
 
 VERY_SMALL_NUMBER = 1e-10
 VERY_NEG_NUMBER = -100000000000
@@ -300,8 +301,9 @@ class GraftNet(nn.Module):
 
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
-        return (use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size))), 
-                use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size))))
+        device = xm.xla_device()
+        return (use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size, device=device))),
+                use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size, device=device))))
 
 
 if __name__ == "__main__":
