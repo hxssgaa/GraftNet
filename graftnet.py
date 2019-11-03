@@ -155,8 +155,8 @@ class GraftNet(nn.Module):
             if self.use_kb:
                 # build kb_adj_matrix from sparse matrix
                 (e2f_batch, e2f_f, e2f_e, e2f_val), (f2e_batch, f2e_e, f2e_f, f2e_val) = kb_adj_mat
-                import pdb; pdb.set_trace()
-                entity2fact_index = torch.LongTensor(torch.stack([e2f_batch, e2f_f, e2f_e]))
+                # import pdb; pdb.set_trace()
+                entity2fact_index = torch.stack([e2f_batch, e2f_f, e2f_e])
                 entity2fact_val = e2f_val.float()
                 entity2fact_mat = use_cuda(torch.sparse.FloatTensor(entity2fact_index, entity2fact_val, torch.Size([batch_size, max_fact, max_local_entity]))) # batch_size, max_fact, max_local_entity
 
