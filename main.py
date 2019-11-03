@@ -32,7 +32,7 @@ def train(cfg):
             train_data,
             batch_size=cfg['batch_size'],
             shuffle=True,
-            num_workers=1, collate_fn=custom_collate)
+            num_workers=num_cores, collate_fn=custom_collate)
 
     if cfg['use_doc']:
         if cfg['dev_documents'] != cfg['train_documents']:
