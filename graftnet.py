@@ -115,194 +115,188 @@ class GraftNet(nn.Module):
         :entity_pos: sparse entity_pos_mat                          (batch_size, max_local_entity, max_relevant_doc * max_document_word) 
         :answer_dist: an distribution over local_entity             (batch_size, max_local_entity)
         """
-        try:
-            local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, query_text, document_text, entity_pos, answer_dist = batch
+        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, query_text, document_text, entity_pos, answer_dist = batch
 
-            batch_size, max_local_entity = local_entity.shape
-            _, max_relevant_doc, max_document_word = document_text.shape if self.use_doc else None, None, None
-            _, max_fact = kb_fact_rel.shape
+        batch_size, max_local_entity = local_entity.shape
+        _, max_relevant_doc, max_document_word = document_text.shape if self.use_doc else None, None, None
+        _, max_fact = kb_fact_rel.shape
 
-            # numpy to tensor
-            with torch.no_grad():
-                local_entity = use_cuda(local_entity)
-                query_text = use_cuda(query_text)
-                query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
-                if self.use_kb:
-                    kb_fact_rel = use_cuda(kb_fact_rel)
-                if self.use_doc:
-                    document_text = use_cuda(document_text)
-                answer_dist = use_cuda(answer_dist).float()
-            local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
-            if self.use_doc:
-                document_mask = use_cuda((document_text != self.num_word).type('torch.FloatTensor'))
-            # normalized adj matrixf
-            pagerank_f = use_cuda(q2e_adj_mat.squeeze(dim=2)).float() # batch_size, max_local_entity
-            pagerank_f.requires_grad=True
-            with torch.no_grad():
-                pagerank_d = use_cuda(
-                    q2e_adj_mat.squeeze(
-                    dim=2)).float()  # batch_size, max_local_entity
-                q2e_adj_mat = use_cuda(q2e_adj_mat)  # batch_size, max_local_entity, 1
-            assert pagerank_f.requires_grad == True
-            assert pagerank_d.requires_grad == False
-
-            # encode query
-            query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
-            query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim, device)) # 1, batch_size, entity_dim
-            query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim
-            query_rel_emb = query_node_emb # batch_size, 1, entity_dim
-
+        # numpy to tensor
+        with torch.no_grad():
+            local_entity = use_cuda(local_entity)
+            query_text = use_cuda(query_text)
+            query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
             if self.use_kb:
-                # build kb_adj_matrix from sparse matrix
-                (e2f_batch, e2f_f, e2f_e, e2f_val), (f2e_batch, f2e_e, f2e_f, f2e_val) = kb_adj_mat
-                # import pdb; pdb.set_trace()
-                entity2fact_index = torch.stack([e2f_batch, e2f_f, e2f_e])
-                entity2fact_val = e2f_val.float()
-                entity2fact_mat = use_cuda(torch.sparse.FloatTensor(entity2fact_index, entity2fact_val, torch.Size([batch_size, max_fact, max_local_entity]))) # batch_size, max_fact, max_local_entity
-
-                fact2entity_index = torch.stack([f2e_batch, f2e_e, f2e_f])
-                fact2entity_val = f2e_val.float()
-                fact2entity_mat = use_cuda(torch.sparse.FloatTensor(fact2entity_index, fact2entity_val, torch.Size([batch_size, max_local_entity, max_fact])))
-
-                # load fact embedding
-                local_fact_emb = self.relation_embedding(kb_fact_rel) # batch_size, max_fact, 2 * word_dim
-                if self.has_relation_kge:
-                    local_fact_emb = torch.cat((local_fact_emb, self.relation_kge(kb_fact_rel)), dim=2) # batch_size, max_fact, 2 * word_dim + kge_dim
-                local_fact_emb = self.relation_linear(local_fact_emb) # batch_size, max_fact, entity_dim
-
-                # attention fact2question
-                div = float(np.sqrt(self.entity_dim))
-                fact2query_sim = torch.bmm(query_hidden_emb, local_fact_emb.transpose(1, 2)) / div # batch_size, max_query_word, max_fact
-                fact2query_sim = self.softmax_d1(fact2query_sim + (1 - query_mask.unsqueeze(dim=2)) * VERY_NEG_NUMBER) # batch_size, max_query_word, max_fact
-                fact2query_att = torch.sum(fact2query_sim.unsqueeze(dim=3) * query_hidden_emb.unsqueeze(dim=2), dim=1) # batch_size, max_fact, entity_dim
-                W = torch.sum(fact2query_att * local_fact_emb, dim=2) / div # batch_size, max_fact
-                W_max = torch.max(W, dim=1, keepdim=True)[0] # batch_size, 1
-                W_tilde = torch.exp(W - W_max) # batch_size, max_fact
-                e2f_softmax = sparse_bmm(entity2fact_mat.transpose(1, 2), W_tilde.unsqueeze(dim=2)).squeeze(dim=2) # batch_size, max_local_entity
-                e2f_softmax = torch.clamp(e2f_softmax, min=VERY_SMALL_NUMBER)
-                with torch.no_grad():
-                    e2f_out_dim = use_cuda(Variable(torch.sum(entity2fact_mat.to_dense(), dim=1))) # batch_size, max_local_entity
-
-            # build entity_pos matrix
+                kb_fact_rel = use_cuda(kb_fact_rel)
             if self.use_doc:
-                entity_pos_dim_batch, entity_pos_dim_entity, entity_pos_dim_doc_by_word, entity_pos_value = entity_pos
-                entity_pos_index = torch.LongTensor([entity_pos_dim_batch, entity_pos_dim_entity, entity_pos_dim_doc_by_word])
-                entity_pos_val = torch.FloatTensor(entity_pos_value)
-                entity_pos_mat = use_cuda(torch.sparse.FloatTensor(entity_pos_index, entity_pos_val, torch.Size([batch_size, max_local_entity, max_relevant_doc * max_document_word]))) # batch_size, max_local_entity, max_relevant_doc * max_document_word
-                d2e_adj_mat = torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3) # batch_size, max_local_entity, max_relevant_doc
-                with torch.no_grad():
-                    d2e_adj_mat = use_cuda(Variable(d2e_adj_mat))
-                e2d_out_dim = torch.sum(torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3), dim=2, keepdim=True) # batch_size, max_local_entity, 1
-                with torch.no_grad():
-                    e2d_out_dim = use_cuda(Variable(e2d_out_dim))
-                e2d_out_dim = torch.clamp(e2d_out_dim,  min=VERY_SMALL_NUMBER)
+                document_text = use_cuda(document_text)
+            answer_dist = use_cuda(answer_dist).float()
+        local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
+        if self.use_doc:
+            document_mask = use_cuda((document_text != self.num_word).type('torch.FloatTensor'))
+        # normalized adj matrixf
+        pagerank_f = use_cuda(q2e_adj_mat.squeeze(dim=2)).float() # batch_size, max_local_entity
+        pagerank_f.requires_grad=True
+        with torch.no_grad():
+            pagerank_d = use_cuda(
+                q2e_adj_mat.squeeze(
+                dim=2)).float()  # batch_size, max_local_entity
+            q2e_adj_mat = use_cuda(q2e_adj_mat)  # batch_size, max_local_entity, 1
+        assert pagerank_f.requires_grad == True
+        assert pagerank_d.requires_grad == False
 
-                d2e_out_dim = torch.sum(torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3), dim=1, keepdim=True) # batch_size, 1, max_relevant_doc
-                with torch.no_grad():
-                    d2e_out_dim = use_cuda(Variable(d2e_out_dim))
-                d2e_out_dim = torch.clamp(d2e_out_dim,  min=VERY_SMALL_NUMBER).transpose(1,2)
+        # encode query
+        query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
+        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim, device)) # 1, batch_size, entity_dim
+        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim
+        query_rel_emb = query_node_emb # batch_size, 1, entity_dim
 
-                # encode document
-                document_textual_emb = self.word_embedding(document_text.view(batch_size * max_relevant_doc, max_document_word)) # batch_size * max_relevant_doc, max_document_word, entity_dim
-                document_textual_emb, (document_node_emb, _) = read_padded(self.bi_text_encoder, self.lstm_drop(document_textual_emb), document_mask.view(-1, max_document_word)) # batch_size * max_relevant_doc, max_document_word, entity_dim
+        if self.use_kb:
+            # build kb_adj_matrix from sparse matrix
+            (e2f_batch, e2f_f, e2f_e, e2f_val), (f2e_batch, f2e_e, f2e_f, f2e_val) = kb_adj_mat
+            # import pdb; pdb.set_trace()
+            entity2fact_index = torch.stack([e2f_batch, e2f_f, e2f_e])
+            entity2fact_val = e2f_val.float()
+            entity2fact_mat = use_cuda(torch.sparse.FloatTensor(entity2fact_index, entity2fact_val, torch.Size([batch_size, max_fact, max_local_entity]))) # batch_size, max_fact, max_local_entity
+
+            fact2entity_index = torch.stack([f2e_batch, f2e_e, f2e_f])
+            fact2entity_val = f2e_val.float()
+            fact2entity_mat = use_cuda(torch.sparse.FloatTensor(fact2entity_index, fact2entity_val, torch.Size([batch_size, max_local_entity, max_fact])))
+
+            # load fact embedding
+            local_fact_emb = self.relation_embedding(kb_fact_rel) # batch_size, max_fact, 2 * word_dim
+            if self.has_relation_kge:
+                local_fact_emb = torch.cat((local_fact_emb, self.relation_kge(kb_fact_rel)), dim=2) # batch_size, max_fact, 2 * word_dim + kge_dim
+            local_fact_emb = self.relation_linear(local_fact_emb) # batch_size, max_fact, entity_dim
+
+            # attention fact2question
+            div = float(np.sqrt(self.entity_dim))
+            fact2query_sim = torch.bmm(query_hidden_emb, local_fact_emb.transpose(1, 2)) / div # batch_size, max_query_word, max_fact
+            fact2query_sim = self.softmax_d1(fact2query_sim + (1 - query_mask.unsqueeze(dim=2)) * VERY_NEG_NUMBER) # batch_size, max_query_word, max_fact
+            fact2query_att = torch.sum(fact2query_sim.unsqueeze(dim=3) * query_hidden_emb.unsqueeze(dim=2), dim=1) # batch_size, max_fact, entity_dim
+            W = torch.sum(fact2query_att * local_fact_emb, dim=2) / div # batch_size, max_fact
+            W_max = torch.max(W, dim=1, keepdim=True)[0] # batch_size, 1
+            W_tilde = torch.exp(W - W_max) # batch_size, max_fact
+            e2f_softmax = sparse_bmm(entity2fact_mat.transpose(1, 2), W_tilde.unsqueeze(dim=2)).squeeze(dim=2) # batch_size, max_local_entity
+            e2f_softmax = torch.clamp(e2f_softmax, min=VERY_SMALL_NUMBER)
+            with torch.no_grad():
+                e2f_out_dim = use_cuda(Variable(torch.sum(entity2fact_mat.to_dense(), dim=1))) # batch_size, max_local_entity
+
+        # build entity_pos matrix
+        if self.use_doc:
+            entity_pos_dim_batch, entity_pos_dim_entity, entity_pos_dim_doc_by_word, entity_pos_value = entity_pos
+            entity_pos_index = torch.LongTensor([entity_pos_dim_batch, entity_pos_dim_entity, entity_pos_dim_doc_by_word])
+            entity_pos_val = torch.FloatTensor(entity_pos_value)
+            entity_pos_mat = use_cuda(torch.sparse.FloatTensor(entity_pos_index, entity_pos_val, torch.Size([batch_size, max_local_entity, max_relevant_doc * max_document_word]))) # batch_size, max_local_entity, max_relevant_doc * max_document_word
+            d2e_adj_mat = torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3) # batch_size, max_local_entity, max_relevant_doc
+            with torch.no_grad():
+                d2e_adj_mat = use_cuda(Variable(d2e_adj_mat))
+            e2d_out_dim = torch.sum(torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3), dim=2, keepdim=True) # batch_size, max_local_entity, 1
+            with torch.no_grad():
+                e2d_out_dim = use_cuda(Variable(e2d_out_dim))
+            e2d_out_dim = torch.clamp(e2d_out_dim,  min=VERY_SMALL_NUMBER)
+
+            d2e_out_dim = torch.sum(torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3), dim=1, keepdim=True) # batch_size, 1, max_relevant_doc
+            with torch.no_grad():
+                d2e_out_dim = use_cuda(Variable(d2e_out_dim))
+            d2e_out_dim = torch.clamp(d2e_out_dim,  min=VERY_SMALL_NUMBER).transpose(1,2)
+
+            # encode document
+            document_textual_emb = self.word_embedding(document_text.view(batch_size * max_relevant_doc, max_document_word)) # batch_size * max_relevant_doc, max_document_word, entity_dim
+            document_textual_emb, (document_node_emb, _) = read_padded(self.bi_text_encoder, self.lstm_drop(document_textual_emb), document_mask.view(-1, max_document_word)) # batch_size * max_relevant_doc, max_document_word, entity_dim
+            document_textual_emb = document_textual_emb[ : , :, 0 : self.entity_dim] + document_textual_emb[ : , :, self.entity_dim : ]
+            document_textual_emb = document_textual_emb.contiguous().view(batch_size, max_relevant_doc, max_document_word, self.entity_dim)
+            document_node_emb = (document_node_emb[0, :, :] + document_node_emb[1, :, :]).view(batch_size, max_relevant_doc, self.entity_dim) # batch_size, max_relevant_doc, entity_dim
+
+        # load entity embedding
+        local_entity_emb = self.entity_embedding(local_entity) # batch_size, max_local_entity, word_dim
+        if self.has_entity_kge:
+            local_entity_emb = torch.cat((local_entity_emb, self.entity_kge(local_entity)), dim=2) # batch_size, max_local_entity, word_dim + kge_dim
+        if self.word_dim != self.entity_dim:
+            local_entity_emb = self.entity_linear(local_entity_emb) # batch_size, max_local_entity, entity_dim
+
+        # label propagation on entities
+        for i in range(self.num_layer):
+            # get linear transformation functions for each layer
+            q2e_linear = getattr(self, 'q2e_linear' + str(i))
+            d2e_linear = getattr(self, 'd2e_linear' + str(i))
+            e2q_linear = getattr(self, 'e2q_linear' + str(i))
+            e2d_linear = getattr(self, 'e2d_linear' + str(i))
+            e2e_linear = getattr(self, 'e2e_linear' + str(i))
+            if self.use_kb:
+                kb_self_linear = getattr(self, 'kb_self_linear' + str(i))
+                kb_head_linear = getattr(self, 'kb_head_linear' + str(i))
+                kb_tail_linear = getattr(self, 'kb_tail_linear' + str(i))
+
+            # start propagation
+            next_local_entity_emb = local_entity_emb
+
+            # STEP 1: propagate from question, documents, and facts to entities
+            # question -> entity
+            q2e_emb = q2e_linear(self.linear_drop(query_node_emb)).expand(batch_size, max_local_entity, self.entity_dim) # batch_size, max_local_entity, entity_dim
+            next_local_entity_emb = torch.cat((next_local_entity_emb, q2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 2
+
+            # document -> entity
+            if self.use_doc:
+                pagerank_e2d = sparse_bmm(entity_pos_mat.transpose(1,2), pagerank_d.unsqueeze(dim=2) / e2d_out_dim) # batch_size, max_relevant_doc * max_document_word, 1
+                pagerank_e2d = pagerank_e2d.view(batch_size, max_relevant_doc, max_document_word)
+                pagerank_e2d = torch.sum(pagerank_e2d, dim=2) # batch_size, max_relevant_doc
+                pagerank_e2d = pagerank_e2d / torch.clamp(torch.sum(pagerank_e2d, dim=1, keepdim=True), min=VERY_SMALL_NUMBER) # batch_size, max_relevant_doc
+                pagerank_e2d = pagerank_e2d.unsqueeze(dim=2).expand(batch_size, max_relevant_doc, max_document_word) # batch_size, max_relevant_doc, max_document_word
+                pagerank_e2d = pagerank_e2d.contiguous().view(batch_size, max_relevant_doc * max_document_word) # batch_size, max_relevant_doc * max_document_word
+                pagerank_d2e = sparse_bmm(entity_pos_mat, pagerank_e2d.unsqueeze(dim=2)) # batch_size, max_local_entity, 1
+                pagerank_d2e = pagerank_d2e.squeeze(dim=2) # batch_size, max_local_entity
+                pagerank_d2e = pagerank_d2e / torch.clamp(torch.sum(pagerank_d2e, dim=1, keepdim=True), min=VERY_SMALL_NUMBER)
+                pagerank_d = self.pagerank_lambda * pagerank_d2e + (1 - self.pagerank_lambda) * pagerank_d
+
+                d2e_emb = sparse_bmm(entity_pos_mat, d2e_linear(document_textual_emb.view(batch_size, max_relevant_doc * max_document_word, self.entity_dim)))
+                d2e_emb = d2e_emb * pagerank_d.unsqueeze(dim=2) # batch_size, max_local_entity, entity_dim
+
+            # fact -> entity
+            if self.use_kb:
+                e2f_emb = self.relu(kb_self_linear(local_fact_emb) + sparse_bmm(entity2fact_mat, kb_head_linear(self.linear_drop(local_entity_emb)))) # batch_size, max_fact, entity_dim
+                e2f_softmax_normalized = W_tilde.unsqueeze(dim=2) * sparse_bmm(entity2fact_mat, (pagerank_f / e2f_softmax).unsqueeze(dim=2)) # batch_size, max_fact, 1
+                e2f_emb = e2f_emb * e2f_softmax_normalized # batch_size, max_fact, entity_dim
+                f2e_emb = self.relu(kb_self_linear(local_entity_emb) + sparse_bmm(fact2entity_mat, kb_tail_linear(self.linear_drop(e2f_emb))))
+
+                pagerank_f = self.pagerank_lambda * sparse_bmm(fact2entity_mat, e2f_softmax_normalized).squeeze(dim=2) + (1 - self.pagerank_lambda) * pagerank_f # batch_size, max_local_entity
+
+            # STEP 2: combine embeddings from fact and documents
+            if self.use_doc and self.use_kb:
+                next_local_entity_emb = torch.cat((next_local_entity_emb, self.fact_scale * f2e_emb + d2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
+            elif self.use_doc:
+                next_local_entity_emb = torch.cat((next_local_entity_emb, d2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
+            elif self.use_kb:
+                next_local_entity_emb = torch.cat((next_local_entity_emb, self.fact_scale * f2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
+            else:
+                assert False, 'using neither kb nor doc ???'
+
+            # STEP 3: propagate from entities to update question, documents, and facts
+            # entity -> document
+            if self.use_doc:
+                e2d_emb = torch.bmm(d2e_adj_mat.transpose(1,2), e2d_linear(self.linear_drop(next_local_entity_emb / e2d_out_dim))) # batch_size, max_relevant_doc, entity_dim
+                e2d_emb = sparse_bmm(entity_pos_mat.transpose(1,2), e2d_linear(self.linear_drop(next_local_entity_emb))) # batch_size, max_relevant_doc * max_document_word, entity_dim
+                e2d_emb = e2d_emb.view(batch_size, max_relevant_doc, max_document_word, self.entity_dim) # batch_size, max_relevant_doc, max_document_word, entity_dim
+                document_textual_emb = document_textual_emb + e2d_emb # batch_size, max_relevant_doc, max_document_word, entity_dim
+                document_textual_emb = document_textual_emb.view(-1, max_document_word, self.entity_dim)
+                document_textual_emb, _ = read_padded(self.doc_info_carrier, self.lstm_drop(document_textual_emb), document_mask.view(-1, max_document_word)) # batch_size * max_relevant_doc, max_document_word, entity_dim
                 document_textual_emb = document_textual_emb[ : , :, 0 : self.entity_dim] + document_textual_emb[ : , :, self.entity_dim : ]
                 document_textual_emb = document_textual_emb.contiguous().view(batch_size, max_relevant_doc, max_document_word, self.entity_dim)
-                document_node_emb = (document_node_emb[0, :, :] + document_node_emb[1, :, :]).view(batch_size, max_relevant_doc, self.entity_dim) # batch_size, max_relevant_doc, entity_dim
 
-            # load entity embedding
-            local_entity_emb = self.entity_embedding(local_entity) # batch_size, max_local_entity, word_dim
-            if self.has_entity_kge:
-                local_entity_emb = torch.cat((local_entity_emb, self.entity_kge(local_entity)), dim=2) # batch_size, max_local_entity, word_dim + kge_dim
-            if self.word_dim != self.entity_dim:
-                local_entity_emb = self.entity_linear(local_entity_emb) # batch_size, max_local_entity, entity_dim
+            # entity -> query
+            query_node_emb = torch.bmm(pagerank_f.unsqueeze(dim=1), e2q_linear(self.linear_drop(next_local_entity_emb)))
 
-            # label propagation on entities
-            for i in range(self.num_layer):
-                # get linear transformation functions for each layer
-                q2e_linear = getattr(self, 'q2e_linear' + str(i))
-                d2e_linear = getattr(self, 'd2e_linear' + str(i))
-                e2q_linear = getattr(self, 'e2q_linear' + str(i))
-                e2d_linear = getattr(self, 'e2d_linear' + str(i))
-                e2e_linear = getattr(self, 'e2e_linear' + str(i))
-                if self.use_kb:
-                    kb_self_linear = getattr(self, 'kb_self_linear' + str(i))
-                    kb_head_linear = getattr(self, 'kb_head_linear' + str(i))
-                    kb_tail_linear = getattr(self, 'kb_tail_linear' + str(i))
-
-                # start propagation
-                next_local_entity_emb = local_entity_emb
-
-                # STEP 1: propagate from question, documents, and facts to entities
-                # question -> entity
-                q2e_emb = q2e_linear(self.linear_drop(query_node_emb)).expand(batch_size, max_local_entity, self.entity_dim) # batch_size, max_local_entity, entity_dim
-                next_local_entity_emb = torch.cat((next_local_entity_emb, q2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 2
-
-                # document -> entity
-                if self.use_doc:
-                    pagerank_e2d = sparse_bmm(entity_pos_mat.transpose(1,2), pagerank_d.unsqueeze(dim=2) / e2d_out_dim) # batch_size, max_relevant_doc * max_document_word, 1
-                    pagerank_e2d = pagerank_e2d.view(batch_size, max_relevant_doc, max_document_word)
-                    pagerank_e2d = torch.sum(pagerank_e2d, dim=2) # batch_size, max_relevant_doc
-                    pagerank_e2d = pagerank_e2d / torch.clamp(torch.sum(pagerank_e2d, dim=1, keepdim=True), min=VERY_SMALL_NUMBER) # batch_size, max_relevant_doc
-                    pagerank_e2d = pagerank_e2d.unsqueeze(dim=2).expand(batch_size, max_relevant_doc, max_document_word) # batch_size, max_relevant_doc, max_document_word
-                    pagerank_e2d = pagerank_e2d.contiguous().view(batch_size, max_relevant_doc * max_document_word) # batch_size, max_relevant_doc * max_document_word
-                    pagerank_d2e = sparse_bmm(entity_pos_mat, pagerank_e2d.unsqueeze(dim=2)) # batch_size, max_local_entity, 1
-                    pagerank_d2e = pagerank_d2e.squeeze(dim=2) # batch_size, max_local_entity
-                    pagerank_d2e = pagerank_d2e / torch.clamp(torch.sum(pagerank_d2e, dim=1, keepdim=True), min=VERY_SMALL_NUMBER)
-                    pagerank_d = self.pagerank_lambda * pagerank_d2e + (1 - self.pagerank_lambda) * pagerank_d
-
-                    d2e_emb = sparse_bmm(entity_pos_mat, d2e_linear(document_textual_emb.view(batch_size, max_relevant_doc * max_document_word, self.entity_dim)))
-                    d2e_emb = d2e_emb * pagerank_d.unsqueeze(dim=2) # batch_size, max_local_entity, entity_dim
-
-                # fact -> entity
-                if self.use_kb:
-                    e2f_emb = self.relu(kb_self_linear(local_fact_emb) + sparse_bmm(entity2fact_mat, kb_head_linear(self.linear_drop(local_entity_emb)))) # batch_size, max_fact, entity_dim
-                    e2f_softmax_normalized = W_tilde.unsqueeze(dim=2) * sparse_bmm(entity2fact_mat, (pagerank_f / e2f_softmax).unsqueeze(dim=2)) # batch_size, max_fact, 1
-                    e2f_emb = e2f_emb * e2f_softmax_normalized # batch_size, max_fact, entity_dim
-                    f2e_emb = self.relu(kb_self_linear(local_entity_emb) + sparse_bmm(fact2entity_mat, kb_tail_linear(self.linear_drop(e2f_emb))))
-
-                    pagerank_f = self.pagerank_lambda * sparse_bmm(fact2entity_mat, e2f_softmax_normalized).squeeze(dim=2) + (1 - self.pagerank_lambda) * pagerank_f # batch_size, max_local_entity
-
-                # STEP 2: combine embeddings from fact and documents
-                if self.use_doc and self.use_kb:
-                    next_local_entity_emb = torch.cat((next_local_entity_emb, self.fact_scale * f2e_emb + d2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
-                elif self.use_doc:
-                    next_local_entity_emb = torch.cat((next_local_entity_emb, d2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
-                elif self.use_kb:
-                    next_local_entity_emb = torch.cat((next_local_entity_emb, self.fact_scale * f2e_emb), dim=2) # batch_size, max_local_entity, entity_dim * 3
-                else:
-                    assert False, 'using neither kb nor doc ???'
-
-                # STEP 3: propagate from entities to update question, documents, and facts
-                # entity -> document
-                if self.use_doc:
-                    e2d_emb = torch.bmm(d2e_adj_mat.transpose(1,2), e2d_linear(self.linear_drop(next_local_entity_emb / e2d_out_dim))) # batch_size, max_relevant_doc, entity_dim
-                    e2d_emb = sparse_bmm(entity_pos_mat.transpose(1,2), e2d_linear(self.linear_drop(next_local_entity_emb))) # batch_size, max_relevant_doc * max_document_word, entity_dim
-                    e2d_emb = e2d_emb.view(batch_size, max_relevant_doc, max_document_word, self.entity_dim) # batch_size, max_relevant_doc, max_document_word, entity_dim
-                    document_textual_emb = document_textual_emb + e2d_emb # batch_size, max_relevant_doc, max_document_word, entity_dim
-                    document_textual_emb = document_textual_emb.view(-1, max_document_word, self.entity_dim)
-                    document_textual_emb, _ = read_padded(self.doc_info_carrier, self.lstm_drop(document_textual_emb), document_mask.view(-1, max_document_word)) # batch_size * max_relevant_doc, max_document_word, entity_dim
-                    document_textual_emb = document_textual_emb[ : , :, 0 : self.entity_dim] + document_textual_emb[ : , :, self.entity_dim : ]
-                    document_textual_emb = document_textual_emb.contiguous().view(batch_size, max_relevant_doc, max_document_word, self.entity_dim)
-
-                # entity -> query
-                query_node_emb = torch.bmm(pagerank_f.unsqueeze(dim=1), e2q_linear(self.linear_drop(next_local_entity_emb)))
-
-                # update entity
-                local_entity_emb = self.relu(e2e_linear(self.linear_drop(next_local_entity_emb))) # batch_size, max_local_entity, entity_dim
+            # update entity
+            local_entity_emb = self.relu(e2e_linear(self.linear_drop(next_local_entity_emb))) # batch_size, max_local_entity, entity_dim
 
 
-            # calculate loss and make prediction
-            score = self.score_func(self.linear_drop(local_entity_emb)).squeeze(dim=2) # batch_size, max_local_entity
-            loss = self.bce_loss_logits(score, answer_dist)
+        # calculate loss and make prediction
+        score = self.score_func(self.linear_drop(local_entity_emb)).squeeze(dim=2) # batch_size, max_local_entity
+        loss = self.bce_loss_logits(score, answer_dist)
 
-            score = score + (1 - local_entity_mask) * VERY_NEG_NUMBER
-            pred_dist = self.sigmoid(score) * local_entity_mask
-            pred = torch.topk(score, 3, dim=1)[1]
-        except Exception as e:
-            loss = None
-            pred = None
-            pred_dist = None
-            print(e)
+        score = score + (1 - local_entity_mask) * VERY_NEG_NUMBER
+        pred_dist = self.sigmoid(score) * local_entity_mask
+        pred = torch.topk(score, 3, dim=1)[1]
 
         return loss, pred, pred_dist
 
