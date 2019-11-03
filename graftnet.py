@@ -104,7 +104,7 @@ class GraftNet(nn.Module):
         self.bce_loss = nn.BCELoss()
         self.bce_loss_logits = nn.BCEWithLogitsLoss()
 
-    def forward(self, index, batch):
+    def forward(self, device, batch):
         """
         :local_entity: global_id of each entity                     (batch_size, max_local_entity)
         :q2e_adj_mat: adjacency matrices (dense)                    (batch_size, max_local_entity, 1)
@@ -148,7 +148,7 @@ class GraftNet(nn.Module):
         # encode query
         query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
         import pdb; pdb.set_trace()
-        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim, index)) # 1, batch_size, entity_dim
+        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim, device)) # 1, batch_size, entity_dim
         query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim
         query_rel_emb = query_node_emb # batch_size, 1, entity_dim
 
@@ -301,8 +301,7 @@ class GraftNet(nn.Module):
         return loss, pred, pred_dist
 
 
-    def init_hidden(self, num_layer, batch_size, hidden_size, index):
-        device = xm.xla_device(index + 1)
+    def init_hidden(self, num_layer, batch_size, hidden_size, device):
         return (use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size, device=device))),
                 use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size, device=device))))
 

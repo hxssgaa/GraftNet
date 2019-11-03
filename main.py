@@ -61,9 +61,9 @@ def train(cfg):
         tracker = xm.RateTracker()
 
         model.train()
-        for x, (index, data) in enumerate(loader):
+        for x, (_, data) in enumerate(loader):
             optimizer.zero_grad()
-            loss, pred, _ = model(index, data)
+            loss, pred, _ = model(device, data)
             loss.backward()
             torch.nn.utils.clip_grad_norm(my_model.parameters(), cfg['gradient_clip'])
             xm.optimizer_step(optimizer)
