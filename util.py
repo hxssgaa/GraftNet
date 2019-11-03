@@ -1,3 +1,5 @@
+import re
+
 import yaml
 import torch
 import os
@@ -7,7 +9,9 @@ import nltk
 import numpy as np
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+from torch.utils.data._utils.collate import default_collate
 from tqdm import tqdm
+from torch._six import container_abcs, string_classes, int_classes
 
 
 def get_config(config_path="config.yml"):
@@ -36,8 +40,9 @@ def load_model(path):
 
 def load_dict(filename):
     word2id = dict()
-    with open(filename) as f_in:
-        for line in f_in:
+    with open(filename, encoding='utf-8') as f_in:
+        lines = f_in.readlines()
+        for line in lines:
             word = line.strip()
             word2id[word] = len(word2id)
     return word2id
@@ -271,6 +276,60 @@ def load_json(file):
     except Exception as e:
         raise e
     return data
+
+
+np_str_obj_array_pattern = re.compile(r'[SaUO]')
+default_collate_err_msg_format = (
+    "default_collate: batch must contain tensors, numpy arrays, numbers, "
+    "dicts or lists; found {}")
+
+
+def custom_collate(batch):
+    r"""Puts each data field into a tensor with outer dimension batch size"""
+
+    elem = batch[0]
+    elem_type = type(elem)
+    if elem is None:
+        return None
+    if isinstance(elem, torch.Tensor):
+        out = None
+        if torch.utils.data.get_worker_info() is not None:
+            # If we're in a background process, concatenate directly into a
+            # shared memory tensor to avoid an extra copy
+            numel = sum([x.numel() for x in batch])
+            storage = elem.storage()._new_shared(numel)
+            out = elem.new(storage)
+        return torch.stack(batch, 0, out=out)
+    elif elem_type.__module__ == 'numpy' and elem_type.__name__ != 'str_' \
+            and elem_type.__name__ != 'string_':
+        elem = batch[0]
+        if elem_type.__name__ == 'ndarray':
+            # array of string classes and object
+            if np_str_obj_array_pattern.search(elem.dtype.str) is not None:
+                raise TypeError(default_collate_err_msg_format.format(elem.dtype))
+
+            same_shape = len(set([b.shape for b in batch])) == 1
+            if same_shape:
+                return custom_collate([torch.as_tensor(b) for b in batch])
+            else:
+                return custom_collate([torch.as_tensor(np.concatenate(batch))])
+        elif elem.shape == ():  # scalars
+            return torch.as_tensor(batch)
+    elif isinstance(elem, float):
+        return torch.tensor(batch, dtype=torch.float64)
+    elif isinstance(elem, int_classes):
+        return torch.tensor(batch)
+    elif isinstance(elem, string_classes):
+        return batch
+    elif isinstance(elem, container_abcs.Mapping):
+        return {key: custom_collate([d[key] for d in batch]) for key in elem}
+    elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple
+        return elem_type(*(custom_collate(samples) for samples in zip(*batch)))
+    elif isinstance(elem, container_abcs.Sequence):
+        transposed = zip(*batch)
+        return [custom_collate(samples) for samples in transposed]
+
+    raise TypeError(default_collate_err_msg_format.format(elem_type))
 
 
 if __name__  == "__main__":

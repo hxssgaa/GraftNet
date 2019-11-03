@@ -16,7 +16,7 @@ relation_kge_file: #"relation_kge_100d.npy"
 to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid"
 pred_file: "model/complexwebq/pred_hybrid"
-load_model_file: "model/complexwebq/best_model_hybrid"
+load_model_file: #"model/complexwebq/best_model_hybrid"
 
 # graph options
 fact_dropout: 0.1

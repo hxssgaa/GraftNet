@@ -6,9 +6,13 @@ from scipy.sparse import coo_matrix, csr_matrix
 from preprocessing.process_complex_webq import clean_text
 from util import load_dict, load_json
 from tqdm import tqdm
+from torch.utils.data import Dataset
+np.random.seed(1024)
 
-class DataLoader():
-    def __init__(self, data_file, documents, document_entity_indices, document_texts, word2id, relation2id, entity2id, max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation):
+
+class GraftNetDataSet(Dataset):
+    def __init__(self, data_file, documents, document_entity_indices, document_texts, word2id, relation2id, entity2id,
+                 max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation, fact_dropout):
         self.use_kb = use_kb
         self.use_doc = use_doc
         self.use_inverse_relation = use_inverse_relation
@@ -20,7 +24,7 @@ class DataLoader():
         if self.use_kb:
             if self.use_inverse_relation:
                 self.num_kb_relation = 2 * len(relation2id)
-            else: 
+            else:
                 self.num_kb_relation = len(relation2id)
         else:
             self.num_kb_relation = 0
@@ -28,7 +32,7 @@ class DataLoader():
         print('loading data from', data_file)
         self.data = []
         f_in = load_json(data_file)
-        # f_in = f_in[:len(f_in) // 2]
+        f_in = f_in[:(len(f_in) // 128 * 16)]
         for line in tqdm(f_in):
             if 'subgraph' not in line:
                 continue
@@ -45,7 +49,7 @@ class DataLoader():
         self.relation2id = relation2id
         self.entity2id = entity2id
         self.documents = documents
-        self.id2entity = {i:entity for entity, i in entity2id.items()}
+        self.id2entity = {i: entity for entity, i in entity2id.items()}
 
         print('converting global to local entity index ...')
         self.global2local_entity_maps = self._build_global2local_entity_maps()
@@ -61,12 +65,13 @@ class DataLoader():
         self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)
         self.q2e_adj_mats = np.zeros((self.num_data, self.max_local_entity, 1), dtype=float)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-        self.rel_document_ids = np.full((self.num_data, self.max_relevant_doc), -1, dtype=int) if use_doc else None# the last document is empty
+        self.rel_document_ids = np.full((self.num_data, self.max_relevant_doc), -1,
+                                        dtype=int) if use_doc else None  # the last document is empty
         self.entity_poses = np.empty(self.num_data, dtype=object)
         self.answer_dists = np.zeros((self.num_data, self.max_local_entity), dtype=float)
-        
-        self._prepare_data()
+        self.fact_dropout = fact_dropout
 
+        self._prepare_data()
 
     def _prepare_data(self):
         """
@@ -80,7 +85,7 @@ class DataLoader():
             # get a list of local entities
             g2l = self.global2local_entity_maps[next_id]
             for global_entity, local_entity in g2l.items():
-                if local_entity != 0: # skip question node
+                if local_entity != 0:  # skip question node
                     self.local_entities[next_id, local_entity] = global_entity
 
             entity2fact_e, entity2fact_f = [], []
@@ -109,7 +114,7 @@ class DataLoader():
                         fact2entity_e += [g2l[self.entity2id[obj]], g2l[self.entity2id[sbj]]]
                         self.kb_fact_rels[next_id, 2 * i] = self.relation2id[rel]
                         self.kb_fact_rels[next_id, 2 * i + 1] = self.relation2id[rel] + len(self.relation2id)
-                    
+
             # build connection between question and entities in it
             for j, entity in enumerate(sample['entities']):
                 if entity not in self.entity2id:
@@ -119,7 +124,7 @@ class DataLoader():
             # connect documents to entities occurred in it
             if self.use_doc:
                 for j, passage in enumerate(sample['passages']):
-                    document_id = passage['document_id']                
+                    document_id = passage['document_id']
                     if document_id not in self.document_entity_indices:
                         continue
                     (global_entity_ids, word_ids, word_weights) = self.document_entity_indices[document_id]
@@ -134,7 +139,7 @@ class DataLoader():
                 if j < self.max_query_word:
                     if word in self.word2id:
                         self.query_texts[next_id, j] = self.word2id[word]
-                    else: 
+                    else:
                         self.query_texts[next_id, j] = self.word2id['__unk__']
 
             # tokenize document
@@ -148,14 +153,18 @@ class DataLoader():
                 if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
                     self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
 
-            self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int), np.array([1.0] * len(entity2fact_f))), (np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int), np.array([1.0] * len(fact2entity_e)))
+            self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int),
+                                         np.array([1.0] * len(entity2fact_f))), (
+                                        np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int),
+                                        np.array([1.0] * len(fact2entity_e)))
             self.entity_poses[next_id] = (entity_pos_local_entity_id, entity_pos_word_id, entity_pos_word_weights)
-            
-            next_id += 1
 
+            next_id += 1
 
     def _build_kb_adj_mat(self, sample_ids, fact_dropout):
         """Create sparse matrix representation for batched data"""
+        if not isinstance(sample_ids, list):
+            sample_ids = [sample_ids]
         mats0_batch = np.array([], dtype=int)
         mats0_0 = np.array([], dtype=int)
         mats0_1 = np.array([], dtype=int)
@@ -171,7 +180,7 @@ class DataLoader():
             assert len(val0) == len(val1)
             num_fact = len(val0)
             num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
-            mask_index = np.random.permutation(num_fact)[ : num_keep_fact]
+            mask_index = np.random.permutation(num_fact)[: num_keep_fact]
             # mat0
             mats0_batch = np.append(mats0_batch, np.full(len(mask_index), i, dtype=int))
             mats0_0 = np.append(mats0_0, mat0_0[mask_index])
@@ -185,40 +194,35 @@ class DataLoader():
 
         return (mats0_batch, mats0_0, mats0_1, vals0), (mats1_batch, mats1_0, mats1_1, vals1)
 
+    def __len__(self):
+        return self.num_data
 
-    def reset_batches(self, is_sequential=True):
-        if is_sequential:
-            self.batches = np.arange(self.num_data)
-        else:
-            self.batches = np.random.permutation(self.num_data)
-
-
-    def get_batch(self, iteration, batch_size, fact_dropout):
-        """
-        *** return values ***
-        :local_entity: global_id of each entity (batch_size, max_local_entity)
-        :adj_mat: adjacency matrices (batch_size, num_relation, max_local_entity, max_local_entity)
-        :query_text: a list of words in the query (batch_size, max_query_word)
-        :rel_document_ids: (batch_size, max_relevant_doc)
-        :answer_dist: an distribution over local_entity (batch_size, max_local_entity)
-        """
-        sample_ids = self.batches[batch_size * iteration: batch_size * (iteration + 1)]
-        
-        return self.local_entities[sample_ids], \
-               self.q2e_adj_mats[sample_ids], \
-               (self._build_kb_adj_mat(sample_ids, fact_dropout=fact_dropout)), \
-               self.kb_fact_rels[sample_ids], \
-               self.query_texts[sample_ids], \
-               self._build_document_text(sample_ids), \
-               (self._build_entity_pos(sample_ids)), \
-               self.answer_dists[sample_ids]
-
+    def __getitem__(self, idx):
+        # return self.local_entities[idx], \
+        #        self.q2e_adj_mats[idx], \
+        #        (self._build_kb_adj_mat(idx, fact_dropout=self.fact_dropout)), \
+        #        self.kb_fact_rels[idx], \
+        #        self.query_texts[idx], \
+        #        self._build_document_text(idx), \
+        #        (self._build_entity_pos(idx)), \
+        #        self.answer_dists[idx]
+        return self.local_entities[idx], \
+               self.q2e_adj_mats[idx], \
+               (self._build_kb_adj_mat(idx, fact_dropout=self.fact_dropout)), \
+               self.kb_fact_rels[idx], \
+               self.query_texts[idx], \
+               self._build_document_text(idx), \
+               (self._build_entity_pos(idx)), \
+               self.answer_dists[idx]
 
     def _build_document_text(self, sample_ids):
         """Index tokenized documents for each sample"""
         if not self.use_doc:
             return None
-        document_text = np.full((len(sample_ids), self.max_relevant_doc, self.max_document_word), len(self.word2id), dtype=int)
+        if not isinstance(sample_ids, list):
+            sample_ids = [sample_ids]
+        document_text = np.full((len(sample_ids), self.max_relevant_doc, self.max_document_word), len(self.word2id),
+                                dtype=int)
         for i, sample_id in enumerate(sample_ids):
             for j, rel_doc_id in enumerate(self.rel_document_ids[sample_id]):
                 if rel_doc_id not in self.document_texts:
@@ -226,9 +230,10 @@ class DataLoader():
                 document_text[i, j] = self.document_texts[rel_doc_id]
         return document_text
 
-
     def _build_entity_pos(self, sample_ids):
         """Index the position of each entity in documents"""
+        if not isinstance(sample_ids, list):
+            sample_ids = [sample_ids]
         entity_pos_batch = np.array([], dtype=int)
         entity_pos_entity_id = np.array([], dtype=int)
         entity_pos_word_id = np.array([], dtype=int)
@@ -242,7 +247,6 @@ class DataLoader():
             entity_pos_word_id = np.append(entity_pos_word_id, word_id)
             vals = np.append(vals, val)
         return (entity_pos_batch.astype(int), entity_pos_entity_id.astype(int), entity_pos_word_id.astype(int), vals)
-
 
     def _build_global2local_entity_maps(self):
         """Create a map from global entity id to local entity of each sample"""
@@ -271,7 +275,6 @@ class DataLoader():
         print('avg local entity: ', total_local_entity / next_id)
         return global2local_entity_maps
 
-
     @staticmethod
     def _add_entity_to_map(entity2id, entities, g2l):
         for entity in entities:
@@ -284,4 +287,3 @@ class DataLoader():
             entity_global_id = entity2id[entity_text]
             if entity_global_id not in g2l:
                 g2l[entity2id[entity_text]] = len(g2l)
-
