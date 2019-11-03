@@ -312,7 +312,7 @@ def custom_collate(batch):
             if same_shape:
                 return custom_collate([torch.as_tensor(b) for b in batch])
             else:
-                return custom_collate([torch.as_tensor(np.concatenate(batch))])
+                return torch.as_tensor(np.concatenate(batch))
         elif elem.shape == ():  # scalars
             return torch.as_tensor(batch)
     elif isinstance(elem, float):

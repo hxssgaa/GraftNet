@@ -17,8 +17,8 @@ from util import load_documents, index_document_entities, output_pred_dist
 def train(cfg):
     print("training ...")
     num_cores = 8
-    # devices = xm.get_xla_supported_devices(max_devices=num_cores) if num_cores != 0 else []
-    # print(devices)
+    devices = xm.get_xla_supported_devices(max_devices=num_cores) if num_cores != 0 else []
+    print(devices)
 
     # prepare data
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
@@ -52,7 +52,7 @@ def train(cfg):
 
     # create model & set parameters
     my_model = get_model(cfg, train_data.num_kb_relation, len(entity2id), len(word2id))
-    # model_parallel = dp.DataParallel(my_model, device_ids=devices)
+    model_parallel = dp.DataParallel(my_model, device_ids=devices)
 
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(trainable_parameters, lr=cfg['learning_rate'])
@@ -61,7 +61,7 @@ def train(cfg):
         tracker = xm.RateTracker()
 
         model.train()
-        for x, (data, target) in enumerate(loader):
+        for x, data in enumerate(loader):
             optimizer.zero_grad()
             loss, pred, _ = model(data)
             loss.backward()
@@ -116,17 +116,19 @@ def train(cfg):
     #     except KeyboardInterrupt:
     #         break
 
-    for x, data in enumerate(train_loader):
-        optimizer.zero_grad()
-        loss, pred, _ = my_model(data)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm(my_model.parameters(), cfg['gradient_clip'])
-        # xm.optimizer_step(optimizer)
-        optimizer.step()
-        if x % 10 == 0:
-            print(loss.item())
 
-    # model_parallel(train_loop_fn, train_loader)
+    # for x, data in enumerate(train_loader):
+    #     optimizer.zero_grad()
+    #     loss, pred, _ = my_model(data)
+    #     loss.backward()
+    #     torch.nn.utils.clip_grad_norm(my_model.parameters(), cfg['gradient_clip'])
+    #     # xm.optimizer_step(optimizer)
+    #     optimizer.step()
+    #     if x % 10 == 0:
+    #         print(loss.item())
+
+    for epoch in range(1, cfg['num_epoch'] + 1):
+        model_parallel(train_loop_fn, train_loader)
     # Test set evaluation
     # print("evaluating on test")
     # print('loading model from ...', cfg['save_model_file'])
