@@ -63,6 +63,7 @@ def train(cfg):
         model.train()
         for x, data in enumerate(loader):
             optimizer.zero_grad()
+            import pdb; pdb.set_trace()
             loss, pred, _ = model(data)
             loss.backward()
             torch.nn.utils.clip_grad_norm(my_model.parameters(), cfg['gradient_clip'])
