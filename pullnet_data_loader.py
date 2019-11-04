@@ -85,7 +85,7 @@ class DataLoader():
     def _prepare_question_subgraph(self, g, question, iteration_t):
         entities = question['entities']
         paths = []
-        all_paths = question['path']
+        all_paths = question['new_paths']
         # for path in all_paths:
         #     if len(path) % 2 == 0 or iteration_t * 2 >= len(path):
         #         continue
@@ -97,12 +97,21 @@ class DataLoader():
         related_entities = set()
         target_entities = set()
         if not all_paths:
+            if 'subgraph' not in question:
+                question['subgraph'] = {}
+            if not question['subgraph']:
+                question['subgraph']['entities'] = question['entities']
+                question['subgraph']['tuples'] = []
             return tuples, related_entities, 1
         for path in all_paths:
-            if len(path) % 2 == 0:
-                continue
-            target_entities.update(path[iteration_t * 2])
+            if iteration_t < len(path):
+                target_entities.add(path[iteration_t])
         if not target_entities:
+            if 'subgraph' not in question:
+                question['subgraph'] = {}
+            if not question['subgraph']:
+                question['subgraph']['entities'] = question['entities']
+                question['subgraph']['tuples'] = []
             return tuples, related_entities, 1
 
         for sbj in entities:

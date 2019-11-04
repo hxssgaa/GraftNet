@@ -6,7 +6,7 @@ from util import *
 FACT_FILES = ['datasets/complexwebq/first_hop_facts.json',
               'datasets/complexwebq/second_hop_facts.json',
               'datasets/complexwebq/third_hop_facts.json']
-QUESTION_FILE = 'datasets/complexwebq/questions/processed_all_questions.json'
+QUESTION_FILE = 'datasets/complexwebq/questions/new_questions.json'
 
 
 
