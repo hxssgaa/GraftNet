@@ -30,18 +30,21 @@ class DataLoader():
             self.num_kb_relation = 0
 
         g = nx.Graph()
+        g = g.to_directed()
         for k1, v1 in tqdm(self.facts.items()):
             for k2, v2 in v1.items():
                 if v2[0] == 0:
                     g.add_edge(k1, k2, data=v2[1])
                 else:
                     g.add_edge(k2, k1, data=v2[1])
+        print('directed', g.is_directed())
 
         self.data = []
         self.entity2id = set()
         avg_recall = 0
         for q in tqdm(questions):
             _, q_related_entities, recall = self._prepare_question_subgraph(g, q, iteration_t)
+            # print(recall)
             avg_recall += recall
             self.entity2id.update(q_related_entities)
             self.data.append(q)
@@ -58,6 +61,7 @@ class DataLoader():
         self.word2id = word2id
         self.relation2id = relation2id
         self.entity2id = list(sorted(self.entity2id))
+        self.entity2id = {e: idx for idx, e in enumerate(self.entity2id)}
         self.documents = documents
         self.id2entity = {i: entity for entity, i in self.entity2id.items()}
 
@@ -82,6 +86,10 @@ class DataLoader():
 
         self._prepare_data()
 
+    def _prepare_question_subgraph_v2(self, question, iteration_t):
+        entities = question['entities']
+
+
     def _prepare_question_subgraph(self, g, question, iteration_t):
         entities = question['entities']
         paths = []
@@ -93,7 +101,7 @@ class DataLoader():
         #     answer = path[-1][0] if isinstance(path[-1], list) else path[-1]
         #     shortest_path = nx.shortest_path(g, topic_entity, answer)
         #     paths.append(shortest_path)
-        tuples = []
+        tuples = set()
         related_entities = set()
         target_entities = set()
         if not all_paths:
@@ -102,7 +110,7 @@ class DataLoader():
             if not question['subgraph']:
                 question['subgraph']['entities'] = question['entities']
                 question['subgraph']['tuples'] = []
-            return tuples, related_entities, 1
+            return [], related_entities, 1
         for path in all_paths:
             if iteration_t < len(path):
                 target_entities.add(path[iteration_t])
@@ -112,19 +120,39 @@ class DataLoader():
             if not question['subgraph']:
                 question['subgraph']['entities'] = question['entities']
                 question['subgraph']['tuples'] = []
-            return tuples, related_entities, 1
+            return [], related_entities, 1
 
-        for sbj in entities:
-            if sbj not in self.facts:
-                continue
-            related_entities.add(sbj)
-            for obj in self.facts[sbj]:
-                related_entities.add(obj)
-                direction, rel = self.facts[sbj][obj]
-                if direction == 0:
-                    tuples.append((sbj, rel, obj))
-                else:
-                    tuples.append((obj, rel, sbj))
+        for entity in entities:
+            if g.has_node(entity):
+                neighbors = list(nx.neighbors(g, entity))
+                related_entities.update(neighbors)
+                for n in neighbors:
+                    if entity in self.facts and n in self.facts[entity]:
+                        direction, rel = self.facts[entity][n]
+                        if direction == 0:
+                            tuples.add((entity, rel, n))
+                        else:
+                            tuples.add((n, rel, entity))
+                    # elif n in self.facts and entity in self.facts[n]:
+                    #     direction, rel = self.facts[n][entity]
+                    #     if direction == 0:
+                    #         tuples.add((n, rel, entity))
+                    #     else:
+                    #         tuples.add((entity, rel, n))
+
+            # tuples.update(list(map(lambda x: (x[0], x[2]['data'], x[1]), nx.to_edgelist(related_graph))))
+        tuples = list(sorted(tuples))
+        # for sbj in entities:
+        #     if sbj not in self.facts:
+        #         continue
+        #     related_entities.add(sbj)
+        #     for obj in self.facts[sbj]:
+        #         related_entities.add(obj)
+        #         direction, rel = self.facts[sbj][obj]
+        #         if direction == 0:
+        #             tuples.append((sbj, rel, obj))
+        #         else:
+        #             tuples.append((obj, rel, sbj))
         if 'subgraph' not in question:
             question['subgraph'] = {}
         if not question['subgraph']:
