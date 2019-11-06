@@ -1,11 +1,12 @@
 import json
 import numpy as np
 import networkx as nx
+import os
 
 from scipy.sparse import coo_matrix, csr_matrix
 
 from preprocessing.process_complex_webq import clean_text
-from util import load_dict, load_json
+from util import load_dict, load_json, save_json
 from tqdm import tqdm
 
 
@@ -43,14 +44,20 @@ class DataLoader():
         self.data = []
         self.entity2id = set(entity2id.keys())
         avg_recall = 0
-        for q in tqdm(questions):
-            _, q_related_entities, recall = self._prepare_question_subgraph(q, iteration_t)
-            # print(recall)
-            avg_recall += recall
-            self.entity2id.update(q_related_entities)
-            self.data.append(q)
-            self.max_relevant_doc = max(self.max_relevant_doc, len(q['passages'])) if use_doc else None
-            self.max_facts = max(self.max_facts, 2 * len(q['subgraph']['tuples']))
+
+        exist_data = os.path.exists('tmp_data_%d_%d.json' % (len(questions), iteration_t))
+        if exist_data:
+            self.data, self.entity2id, self.max_facts = load_json('tmp_data_%d_%d.json' % (len(questions), iteration_t))
+            self.max_relevant_doc = None
+        else:
+            for q in tqdm(questions):
+                _, q_related_entities, recall = self._prepare_question_subgraph(q, iteration_t)
+                # print(recall)
+                avg_recall += recall
+                self.entity2id.update(q_related_entities)
+                self.data.append(q)
+                self.max_relevant_doc = max(self.max_relevant_doc, len(q['passages'])) if use_doc else None
+                self.max_facts = max(self.max_facts, 2 * len(q['subgraph']['tuples']))
         avg_recall /= len(questions)
         print('avg recall:', avg_recall)
         print('max_relevant_doc: ', self.max_relevant_doc)
@@ -61,8 +68,10 @@ class DataLoader():
         print('building word index ...')
         self.word2id = word2id
         self.relation2id = relation2id
-        self.entity2id = list(sorted(self.entity2id))
-        self.entity2id = {e: idx for idx, e in enumerate(self.entity2id)}
+        if not exist_data:
+            self.entity2id = list(sorted(self.entity2id))
+            self.entity2id = {e: idx for idx, e in enumerate(self.entity2id)}
+        save_json([self.data, self.entity2id, self.max_facts], 'tmp_data_%d_%d.json' % (len(questions), iteration_t))
         entity2id.update(self.entity2id)
         self.documents = documents
         self.id2entity = {i: entity for entity, i in self.entity2id.items()}
@@ -120,7 +129,7 @@ class DataLoader():
 
         for entity in entities:
             if entity in self.facts:
-                neighbors = dict(list(self.facts[entity].items())[:7500])
+                neighbors = dict(list(self.facts[entity].items())[:500])
                 related_entities.update(neighbors)
                 for n, val in neighbors.items():
                     direction, rel = val
@@ -151,7 +160,7 @@ class DataLoader():
         if 'subgraph' not in question:
             question['subgraph'] = {}
         if not question['subgraph']:
-            question['subgraph']['entities'] = related_entities
+            question['subgraph']['entities'] = list(sorted(related_entities))
             question['subgraph']['tuples'] = tuples
         question['answers_hop_%d' % iteration_t] = list(map(lambda x: {'answer_id': x}, list(sorted(target_entities))))
         return tuples, related_entities, len(related_entities & target_entities) / len(target_entities)

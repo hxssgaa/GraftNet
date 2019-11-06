@@ -107,7 +107,7 @@ def get_model(cfg, num_kb_relation, num_entities, num_vocab, num_layer):
     relation_kge_file = None if cfg['relation_kge_file'] is None else cfg['data_folder'] + cfg['relation_kge_file']
 
     my_model = use_cuda(GraftNet(word_emb_file, entity_emb_file, entity_kge_file, relation_emb_file, relation_kge_file,
-                                 num_layer, num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
+                                 1, num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
                                  cfg['word_dim'], cfg['kge_dim'], cfg['pagerank_lambda'], cfg['fact_scale'],
                                  cfg['lstm_dropout'], cfg['linear_dropout'], cfg['use_kb'], cfg['use_doc']))
 

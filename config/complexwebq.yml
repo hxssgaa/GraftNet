@@ -24,23 +24,23 @@ use_kb: True
 use_doc: False
 
 num_layer: 3
-max_query_word: 10
+max_query_word: 20
 max_document_word: 50
 
-entity_dim: 25
+entity_dim: 10
 word_dim: 100
-kge_dim: 100
+kge_dim: 10
 pagerank_lambda: 0.8
 fact_scale: 3
 use_inverse_relation: True
 
 # optimization
 num_epoch: 20
-batch_size: 16
+batch_size: 32
 gradient_clip: 1
-learning_rate: 0.003
-lstm_dropout: 0.3
-linear_dropout: 0.2
+learning_rate: 0.001
+lstm_dropout: 0.5
+linear_dropout: 0.4
 is_debug: False
 
 
