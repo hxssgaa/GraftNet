@@ -10,10 +10,11 @@ from tqdm import tqdm
 
 
 class DataLoader():
-    def __init__(self, questions, facts, iteration_t, documents, document_entity_indices, document_texts, word2id, relation2id,
-                 max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation):
+    def __init__(self, questions, facts, iteration_t, documents, document_entity_indices, document_texts, word2id,
+                 relation2id, entity2id, max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation):
         self.use_kb = use_kb
         self.use_doc = use_doc
+        self.iteration_t = iteration_t
         self.use_inverse_relation = use_inverse_relation
         self.max_local_entity = 0
         self.max_relevant_doc = 0
@@ -29,21 +30,21 @@ class DataLoader():
         else:
             self.num_kb_relation = 0
 
-        g = nx.Graph()
-        g = g.to_directed()
-        for k1, v1 in tqdm(self.facts.items()):
-            for k2, v2 in v1.items():
-                if v2[0] == 0:
-                    g.add_edge(k1, k2, data=v2[1])
-                else:
-                    g.add_edge(k2, k1, data=v2[1])
-        print('directed', g.is_directed())
+        # g = nx.Graph()
+        # g = g.to_directed()
+        # for k1, v1 in tqdm(self.facts.items()):
+        #     for k2, v2 in v1.items():
+        #         if v2[0] == 0:
+        #             g.add_edge(k1, k2, data=v2[1])
+        #         else:
+        #             g.add_edge(k2, k1, data=v2[1])
+        # print('directed', g.is_directed())
 
         self.data = []
-        self.entity2id = set()
+        self.entity2id = set(entity2id.keys())
         avg_recall = 0
         for q in tqdm(questions):
-            _, q_related_entities, recall = self._prepare_question_subgraph(g, q, iteration_t)
+            _, q_related_entities, recall = self._prepare_question_subgraph(q, iteration_t)
             # print(recall)
             avg_recall += recall
             self.entity2id.update(q_related_entities)
@@ -62,6 +63,7 @@ class DataLoader():
         self.relation2id = relation2id
         self.entity2id = list(sorted(self.entity2id))
         self.entity2id = {e: idx for idx, e in enumerate(self.entity2id)}
+        entity2id.update(self.entity2id)
         self.documents = documents
         self.id2entity = {i: entity for entity, i in self.entity2id.items()}
 
@@ -90,30 +92,24 @@ class DataLoader():
         entities = question['entities']
 
 
-    def _prepare_question_subgraph(self, g, question, iteration_t):
+    def _prepare_question_subgraph(self, question, iteration_t):
         entities = question['entities']
-        paths = []
-        all_paths = question['new_paths']
-        # for path in all_paths:
-        #     if len(path) % 2 == 0 or iteration_t * 2 >= len(path):
-        #         continue
-        #     topic_entity = path[0]
-        #     answer = path[-1][0] if isinstance(path[-1], list) else path[-1]
-        #     shortest_path = nx.shortest_path(g, topic_entity, answer)
-        #     paths.append(shortest_path)
+        paths = question['path']
         tuples = set()
         related_entities = set()
         target_entities = set()
-        if not all_paths:
+        if not paths:
             if 'subgraph' not in question:
                 question['subgraph'] = {}
             if not question['subgraph']:
                 question['subgraph']['entities'] = question['entities']
                 question['subgraph']['tuples'] = []
             return [], related_entities, 1
-        for path in all_paths:
+        for path in paths:
+            if len(path) % 2 == 0:
+                continue
             if iteration_t < len(path):
-                target_entities.add(path[iteration_t])
+                target_entities.update(path[iteration_t * 2])
         if not target_entities:
             if 'subgraph' not in question:
                 question['subgraph'] = {}
@@ -123,16 +119,15 @@ class DataLoader():
             return [], related_entities, 1
 
         for entity in entities:
-            if g.has_node(entity):
-                neighbors = list(nx.neighbors(g, entity))
+            if entity in self.facts:
+                neighbors = dict(list(self.facts[entity].items())[:7500])
                 related_entities.update(neighbors)
-                for n in neighbors:
-                    if entity in self.facts and n in self.facts[entity]:
-                        direction, rel = self.facts[entity][n]
-                        if direction == 0:
-                            tuples.add((entity, rel, n))
-                        else:
-                            tuples.add((n, rel, entity))
+                for n, val in neighbors.items():
+                    direction, rel = val
+                    if direction == 0:
+                        tuples.add((entity, rel, n))
+                    else:
+                        tuples.add((n, rel, entity))
                     # elif n in self.facts and entity in self.facts[n]:
                     #     direction, rel = self.facts[n][entity]
                     #     if direction == 0:
@@ -158,6 +153,7 @@ class DataLoader():
         if not question['subgraph']:
             question['subgraph']['entities'] = related_entities
             question['subgraph']['tuples'] = tuples
+        question['answers_hop_%d' % iteration_t] = list(map(lambda x: {'answer_id': x}, list(sorted(target_entities))))
         return tuples, related_entities, len(related_entities & target_entities) / len(target_entities)
 
     def _prepare_data(self):
@@ -235,7 +231,7 @@ class DataLoader():
                     self.rel_document_ids[next_id, pid] = passage['document_id']
 
             # construct distribution for answers
-            for answer in sample['answers']:
+            for answer in sample['answers_hop_%d' % self.iteration_t]:
                 keyword = 'answer_id'
                 if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
                     self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
