@@ -71,7 +71,7 @@ class DataLoader():
         if not exist_data:
             self.entity2id = list(sorted(self.entity2id))
             self.entity2id = {e: idx for idx, e in enumerate(self.entity2id)}
-        save_json([self.data, self.entity2id, self.max_facts], 'tmp_data_%d_%d.json' % (len(questions), iteration_t))
+            save_json([self.data, self.entity2id, self.max_facts], 'tmp_data_%d_%d.json' % (len(questions), iteration_t))
         entity2id.update(self.entity2id)
         self.documents = documents
         self.id2entity = {i: entity for entity, i in self.entity2id.items()}
@@ -130,8 +130,9 @@ class DataLoader():
         for entity in entities:
             if entity in self.facts:
                 neighbors = dict(list(self.facts[entity].items())[:500])
-                related_entities.update(neighbors)
+                related_entities.add(entity)
                 for n, val in neighbors.items():
+                    related_entities.add(n)
                     direction, rel = val
                     if direction == 0:
                         tuples.add((entity, rel, n))
@@ -191,8 +192,6 @@ class DataLoader():
             if self.use_kb:
                 for i, tpl in enumerate(sample['subgraph']['tuples']):
                     sbj, rel, obj = tpl
-                    if sbj not in self.entity2id or obj not in self.entity2id or rel not in self.relation2id:
-                        continue
                     if not self.use_inverse_relation:
                         entity2fact_e += [g2l[self.entity2id[sbj]]]
                         entity2fact_f += [i]

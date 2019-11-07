@@ -14,7 +14,7 @@ def sparse_bmm(a, b):
 
 
 class GraftNet(nn.Module):
-    def __init__(self, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file, pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity, num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, use_kb, use_doc):
+    def __init__(self, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file, pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity, num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, use_kb, use_doc, use_inverse_relation):
         """
         num_relation: number of relation including self-connection
         """
@@ -51,7 +51,12 @@ class GraftNet(nn.Module):
         # initialize relation embedding
         self.relation_embedding = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=2 * word_dim, padding_idx=num_relation)
         if pretrained_relation_emb_file is not None:
-            self.relation_embedding.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_relation_emb_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
+            if use_inverse_relation:
+                self.relation_embedding.weight = nn.Parameter(
+                    torch.from_numpy(np.pad(np.concatenate((np.load(pretrained_relation_emb_file), np.load(pretrained_relation_emb_file)),
+                                                           axis=0), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
+            else:
+                self.relation_embedding.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_relation_emb_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
         if pretrained_relation_kge_file is not None:
             self.has_relation_kge = True
             self.relation_kge = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=kge_dim, padding_idx=num_relation)
