@@ -153,11 +153,11 @@ def process_vocab(embeddings_file):
         test_corpus.update(processed_question)
     corpus.add('__unk__')
     corpus_list = list(sorted(corpus))
-    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 100) for word in corpus_list])
+    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 200) for word in corpus_list])
     with open('datasets/complexwebq/vocab.txt', 'w') as f:
         for e in corpus_list:
             f.writelines(e + '\n')
-    np.save('datasets/complexwebq/word_emb_100d.npy', word_emb_npy)
+    np.save('datasets/complexwebq/word_emb_200d.npy', word_emb_npy)
     print('train emb coverage: ', len(corpus & set(word2vec.keys())) / len(corpus))
     print('dev coverage: ', len(corpus & dev_corpus) / len(dev_corpus))
     print('test coverage: ', len(corpus & test_corpus) / len(test_corpus))
@@ -229,6 +229,30 @@ def process_relation_embedding(embedding_file, use_f=True):
 
 
 if __name__ == '__main__':
-    result = process_relation_embedding('datasets/complexwebq/glove.6B.200d.txt', False)
+    # result = process_relation_embedding('datasets/complexwebq/glove.6B.200d.txt', False)
     # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
     # process_entities()
+    process_vocab('datasets/complexwebq/glove.6B.200d.txt')
+
+
+
+    # facts = load_json('datasets/complexwebq/all_facts.json')
+    # facts_v2 = {}
+    # entities = set()
+    # for k1, v1 in tqdm(facts.items()):
+    #     entities.add(k1)
+    #     if k1 not in facts_v2:
+    #         facts_v2[k1] = dict()
+    #     for k2, v2 in v1.items():
+    #         entities.add(k2)
+    #         direction, rel = v2
+    #         if rel not in facts_v2[k1]:
+    #             facts_v2[k1][rel] = dict()
+    #         if k2 not in facts_v2[k1][rel]:
+    #             facts_v2[k1][rel][k2] = direction
+    #
+    # with open('datasets/complexwebq/entities_v2.txt', 'w') as f:
+    #     for e in list(sorted(entities)):
+    #         if e.startswith('m.') or e.startswith('g.'):
+    #             f.writelines(e + '\n')
+    # save_json(facts_v2, 'datasets/complexwebq/all_facts_v2.json')

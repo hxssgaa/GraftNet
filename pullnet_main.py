@@ -1,10 +1,10 @@
 import sys
 
-from graftnet import GraftNet
+from pullnet import PullNet
 from pullnet_data_loader import DataLoader
 from util import *
 
-FACT_FILE = 'datasets/complexwebq/all_facts.json'
+FACT_FILE = 'datasets/complexwebq/all_facts_v2.json'
 QUESTION_FILE = 'datasets/complexwebq/questions/all_questions.json'
 RAW_QUESTION_IDS = {
     'train': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_train.json'))),
@@ -18,29 +18,25 @@ def train(cfg):
     facts = load_json(FACT_FILE)
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
+    entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
 
     train_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['train']]
     dev_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['dev']]
     test_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['test']]
 
-    entity2id = dict()
 
     train_documents, train_document_entity_indices, train_document_texts = None, None, None
-    train_data = DataLoader(train_questions, facts, t, train_documents, train_document_entity_indices,
-                            train_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'],
+    train_data = DataLoader(train_questions, train_documents, train_document_entity_indices,
+                            train_document_texts, word2id, relation2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
     valid_documents, valid_document_entity_indices, valid_document_texts = None, None, None
-    valid_data = DataLoader(dev_questions, facts, t, valid_documents, valid_document_entity_indices,
-                            valid_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'],
+    valid_data = DataLoader(dev_questions, valid_documents, valid_document_entity_indices,
+                            valid_document_texts, word2id, relation2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
-    facts = None
-    train_questions = None,
-    dev_questions = None,
-    test_questions = None
     # create model & set parameters
-    my_model = get_model(cfg, train_data.num_kb_relation, len(entity2id), len(word2id), t)
+    my_model = get_model(facts, entity2id, relation2id, cfg, train_data.num_kb_relation, len(entity2id), len(word2id))
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(trainable_parameters, lr=cfg['learning_rate'])
 
@@ -91,17 +87,17 @@ def test(cfg):
     pass
 
 
-def get_model(cfg, num_kb_relation, num_entities, num_vocab, num_layer):
+def get_model(facts, entity2id, relation2id, cfg, num_kb_relation, num_entities, num_vocab):
     word_emb_file = None if cfg['word_emb_file'] is None else cfg['data_folder'] + cfg['word_emb_file']
     entity_emb_file = None if cfg['entity_emb_file'] is None else cfg['data_folder'] + cfg['entity_emb_file']
     entity_kge_file = None if cfg['entity_kge_file'] is None else cfg['data_folder'] + cfg['entity_kge_file']
     relation_emb_file = None if cfg['relation_emb_file'] is None else cfg['data_folder'] + cfg['relation_emb_file']
     relation_kge_file = None if cfg['relation_kge_file'] is None else cfg['data_folder'] + cfg['relation_kge_file']
 
-    my_model = use_cuda(GraftNet(word_emb_file, entity_emb_file, entity_kge_file, relation_emb_file, relation_kge_file,
-                                 1, num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
+    my_model = use_cuda(PullNet(facts, entity2id, relation2id, word_emb_file, entity_emb_file, entity_kge_file, relation_emb_file, relation_kge_file,
+                                 cfg['num_layer'], num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
                                  cfg['word_dim'], cfg['kge_dim'], cfg['pagerank_lambda'], cfg['fact_scale'],
-                                 cfg['lstm_dropout'], cfg['linear_dropout'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation']))
+                                 cfg['lstm_dropout'], cfg['linear_dropout'], cfg['fact_dropout'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation']))
 
     if cfg['load_model_file'] is not None:
         print('loading model from', cfg['load_model_file'])

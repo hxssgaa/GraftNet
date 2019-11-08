@@ -6,7 +6,7 @@ test_data: 'test.json'
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
-entity2id: 'entities.txt'
+entity2id: 'entities_v2.txt'
 word_emb_file: "word_emb_100d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
@@ -32,7 +32,7 @@ word_dim: 100
 kge_dim: 25
 pagerank_lambda: 0.8
 fact_scale: 3
-use_inverse_relation: True
+use_inverse_relation: False
 
 # optimization
 num_epoch: 20

@@ -15,14 +15,17 @@ def sparse_bmm(a, b):
 
 
 class PullNet(nn.Module):
-    def __init__(self, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file,
+    def __init__(self, facts, entity2id, relation2id, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file,
                  pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity,
-                 num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout,
+                 num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, fact_dropout,
                  use_kb, use_doc, use_inverse_relation):
         """
         num_relation: number of relation including self-connection
         """
         super(PullNet, self).__init__()
+        self.facts = facts
+        self.entity2id = entity2id
+        self.relation2id = relation2id
         self.num_layer = num_layer
         self.num_relation = num_relation
         self.num_entity = num_entity
@@ -31,6 +34,7 @@ class PullNet(nn.Module):
         self.word_dim = word_dim
         self.pagerank_lambda = pagerank_lambda
         self.fact_scale = fact_scale
+        self.fact_dropout = fact_dropout
         self.has_entity_kge = False
         self.has_relation_kge = False
         self.use_kb = use_kb
@@ -39,7 +43,7 @@ class PullNet(nn.Module):
 
         # initialize entity embedding
         self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim,
-                                             padding_idx=num_entity)
+                                             padding_idx=num_entity, sparse=True)
         if pretrained_entity_emb_file is not None:
             self.entity_embedding.weight = nn.Parameter(
                 torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type(
@@ -130,6 +134,221 @@ class PullNet(nn.Module):
         self.bce_loss = nn.BCELoss()
         self.bce_loss_logits = nn.BCEWithLogitsLoss()
 
+    def _prepare_question_subgraph(self, question, h_q, iteration_t):
+        entities = question['entities']
+        paths = question['path']
+        related_entities = set()
+        target_entities = set()
+        if not paths:
+            if 'subgraph' not in question:
+                question['subgraph'] = {}
+            if not question['subgraph']:
+                question['subgraph']['entities'] = question['entities']
+                question['subgraph']['tuples'] = []
+            return [], related_entities, 1
+        for path in paths:
+            if len(path) % 2 == 0:
+                continue
+            if iteration_t < len(path):
+                target_entities.update(path[iteration_t * 2])
+        if not target_entities:
+            if 'subgraph' not in question:
+                question['subgraph'] = {}
+            if not question['subgraph']:
+                question['subgraph']['entities'] = question['entities']
+                question['subgraph']['tuples'] = []
+            return [], related_entities, 1
+
+        related_relations = set()
+        for entity in entities:
+            if entity in self.facts:
+                related_relations.update(self.facts[entity])
+
+        top_facts = 100
+        related_relations = list(sorted(related_relations))
+        related_relations_ids = use_cuda(torch.tensor([self.relation2id[rel] for rel in related_relations]))
+        related_relation_emb = self.relation_embedding(related_relations_ids)
+        relation_scores = torch.sigmoid(self.relation_linear(related_relation_emb) @ (h_q.reshape(h_q.size(0), 1)))
+        top_scores = torch.argsort(relation_scores, dim=0)
+        top_relations = [related_relations[e.item()] for e in top_scores.cpu()]
+
+        extracted_tuples = set()
+        flag = False
+        for top_relation in top_relations:
+            if flag:
+                break
+            for entity in entities:
+                if flag:
+                    break
+                if top_relation not in self.facts[entity]:
+                    continue
+                for obj in self.facts[entity][top_relation]:
+                    direction = self.facts[entity][top_relation][obj]
+                    if direction == 0:
+                        extracted_tuples.add((entity, top_relation, obj))
+                    else:
+                        extracted_tuples.add((obj, top_relation, entity))
+                    if len(extracted_tuples) >= top_facts:
+                        flag = True
+                        break
+        for s, p, o in extracted_tuples:
+            related_entities.add(s)
+            related_entities.add(o)
+        extracted_tuples = list(sorted(extracted_tuples))
+        extracted_entities = list(sorted(related_entities))
+
+        if 'subgraph' not in question:
+            question['subgraph'] = {}
+        if not question['subgraph']:
+            question['subgraph']['entities'] = extracted_entities
+            question['subgraph']['tuples'] = extracted_tuples
+        question['answers_hop_%d' % iteration_t] = list(map(lambda x: {'answer_id': x}, list(sorted(target_entities))))
+        return len(related_entities & target_entities) / len(target_entities)
+
+    @staticmethod
+    def _add_entity_to_map(entity2id, entities, g2l):
+        for entity in entities:
+            if isinstance(entity, dict):
+                entity_text = entity['text']
+            else:
+                entity_text = entity
+            if entity_text not in entity2id:
+                continue
+            entity_global_id = entity2id[entity_text]
+            if entity_global_id not in g2l:
+                g2l[entity2id[entity_text]] = len(g2l)
+
+    def _build_global2local_entity_maps(self, data):
+        """Create a map from global entity id to local entity of each sample"""
+        global2local_entity_maps = [None] * len(data)
+        total_local_entity = 0.0
+        next_id = 0
+        max_local_entity = 0
+        for sample in data:
+            g2l = dict()
+            self._add_entity_to_map(self.entity2id, sample['entities'], g2l)
+            # construct a map from global entity id to local entity id
+            if self.use_kb:
+                self._add_entity_to_map(self.entity2id, sample['subgraph']['entities'], g2l)
+            if self.use_doc:
+                for relevant_doc in sample['passages']:
+                    if relevant_doc['document_id'] not in self.documents:
+                        continue
+                    document = self.documents[int(relevant_doc['document_id'])]
+                    self._add_entity_to_map(self.entity2id, document['document']['entities'], g2l)
+                    if 'title' in document:
+                        self._add_entity_to_map(self.entity2id, document['title']['entities'], g2l)
+
+            global2local_entity_maps[next_id] = g2l
+            total_local_entity += len(g2l)
+            max_local_entity = max(max_local_entity, len(g2l))
+            next_id += 1
+        print('avg local entity: ', total_local_entity / next_id)
+        return global2local_entity_maps, max_local_entity
+
+    def _prepare_data(self, data, iteration_t, global2local_entity_maps, local_entities, kb_adj_mats,
+                      kb_fact_rels, q2e_adj_mats, answer_dists):
+        next_id = 0
+        for sample in data:
+            # get a list of local entities
+            g2l = global2local_entity_maps[next_id]
+            for global_entity, local_entity in g2l.items():
+                if local_entity != 0:  # skip question node
+                    local_entities[next_id, local_entity] = global_entity
+
+            entity2fact_e, entity2fact_f = [], []
+            fact2entity_f, fact2entity_e = [], []
+
+            # relations in local KB
+            if self.use_kb:
+                for i, tpl in enumerate(sample['subgraph']['tuples']):
+                    sbj, rel, obj = tpl
+                    if not self.use_inverse_relation:
+                        entity2fact_e += [g2l[self.entity2id[sbj]]]
+                        entity2fact_f += [i]
+                        fact2entity_f += [i]
+                        fact2entity_e += [g2l[self.entity2id[obj]]]
+                        kb_fact_rels[next_id, i] = self.relation2id[rel]
+                    else:
+                        entity2fact_e += [g2l[self.entity2id[sbj]], g2l[self.entity2id[obj]]]
+                        entity2fact_f += [2 * i, 2 * i + 1]
+                        fact2entity_f += [2 * i, 2 * i + 1]
+                        fact2entity_e += [g2l[self.entity2id[obj]], g2l[self.entity2id[sbj]]]
+                        kb_fact_rels[next_id, 2 * i] = self.relation2id[rel]
+                        kb_fact_rels[next_id, 2 * i + 1] = self.relation2id[rel] + len(self.relation2id)
+
+            # build connection between question and entities in it
+            for j, entity in enumerate(sample['entities']):
+                if entity not in self.entity2id:
+                    continue
+                q2e_adj_mats[next_id, g2l[self.entity2id[entity]], 0] = 1.0
+
+            # construct distribution for answers
+            for answer in sample['answers_hop_%d' % iteration_t]:
+                keyword = 'answer_id'
+                if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
+                    answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
+
+            kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int),
+                                         np.array([1.0] * len(entity2fact_f))), (
+                                            np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int),
+                                            np.array([1.0] * len(fact2entity_e)))
+            next_id += 1
+
+    def _build_kb_adj_mat(self, kb_adj_mats, fact_dropout):
+        """Create sparse matrix representation for batched data"""
+        mats0_batch = np.array([], dtype=int)
+        mats0_0 = np.array([], dtype=int)
+        mats0_1 = np.array([], dtype=int)
+        vals0 = np.array([], dtype=float)
+
+        mats1_batch = np.array([], dtype=int)
+        mats1_0 = np.array([], dtype=int)
+        mats1_1 = np.array([], dtype=int)
+        vals1 = np.array([], dtype=float)
+
+        for sample_id in range(len(kb_adj_mats)):
+            (mat0_0, mat0_1, val0), (mat1_0, mat1_1, val1) = kb_adj_mats[sample_id]
+            assert len(val0) == len(val1)
+            num_fact = len(val0)
+            num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
+            mask_index = np.random.permutation(num_fact)[: num_keep_fact]
+            # mat0
+            mats0_batch = np.append(mats0_batch, np.full(len(mask_index), sample_id, dtype=int))
+            mats0_0 = np.append(mats0_0, mat0_0[mask_index])
+            mats0_1 = np.append(mats0_1, mat0_1[mask_index])
+            vals0 = np.append(vals0, val0[mask_index])
+            # mat1
+            mats1_batch = np.append(mats1_batch, np.full(len(mask_index), sample_id, dtype=int))
+            mats1_0 = np.append(mats1_0, mat1_0[mask_index])
+            mats1_1 = np.append(mats1_1, mat1_1[mask_index])
+            vals1 = np.append(vals1, val1[mask_index])
+
+        return (mats0_batch, mats0_0, mats0_1, vals0), (mats1_batch, mats1_0, mats1_1, vals1)
+
+    def pull_facts(self, h_qs, question_data, iteration_t):
+        avg_recall = 0
+        max_facts = 0
+        for idx in range(len(question_data)):
+            q = question_data[idx]
+            h_q = h_qs[idx]
+            recall = self._prepare_question_subgraph(q, h_q[-1], iteration_t)
+            max_facts = max(max_facts, 2 * len(q['subgraph']['tuples']))
+            avg_recall += recall
+        print('pull_facts recall:', avg_recall / len(question_data))
+
+        global2local_entity_maps, max_local_entity = self._build_global2local_entity_maps(question_data)
+
+        num_data = len(question_data)
+        local_entities = np.full((num_data, max_local_entity), len(self.entity2id), dtype=int)
+        kb_adj_mats = np.empty(num_data, dtype=object)
+        kb_fact_rels = np.full((num_data, max_facts), self.num_relation, dtype=int)
+        q2e_adj_mats = np.zeros((num_data, max_local_entity, 1), dtype=float)
+        answer_dists = np.zeros((num_data, max_local_entity), dtype=float)
+
+        self._prepare_data(question_data, iteration_t, global2local_entity_maps, local_entities, kb_adj_mats, kb_fact_rels, q2e_adj_mats, answer_dists)
+        return local_entities, q2e_adj_mats, self._build_kb_adj_mat(kb_adj_mats, fact_dropout=self.fact_dropout), kb_fact_rels, None, None, answer_dists
+
     def forward(self, batch):
         """
         :local_entity: global_id of each entity                     (batch_size, max_local_entity)
@@ -141,7 +360,19 @@ class PullNet(nn.Module):
         :entity_pos: sparse entity_pos_mat                          (batch_size, max_local_entity, max_relevant_doc * max_document_word)
         :answer_dist: an distribution over local_entity             (batch_size, max_local_entity)
         """
-        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, query_text, document_text, entity_pos, answer_dist = batch
+        query_text, question_data = batch
+        with torch.no_grad():
+            query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor')))
+            query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
+
+        # encode query
+        batch_size = batch[0].shape[0]
+        query_word_emb = self.word_embedding(query_text)  # batch_size, max_query_word, word_dim
+        query_hidden_emb, (query_node_emb, _) = self.node_encoder(
+            self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim))  # 1, batch_size, entity_dim
+        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)
+
+        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, document_text, entity_pos, answer_dist = self.pull_facts(query_hidden_emb, question_data, 1)
 
         batch_size, max_local_entity = local_entity.shape
         _, max_relevant_doc, max_document_word = document_text.shape if self.use_doc else None, None, None
@@ -150,8 +381,6 @@ class PullNet(nn.Module):
         # numpy to tensor
         with torch.no_grad():
             local_entity = use_cuda(Variable(torch.from_numpy(local_entity).type('torch.LongTensor')))
-            query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor')))
-            query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
             if self.use_kb:
                 kb_fact_rel = use_cuda(Variable(torch.from_numpy(kb_fact_rel).type('torch.LongTensor')))
             if self.use_doc:
@@ -174,12 +403,6 @@ class PullNet(nn.Module):
         assert pagerank_f.requires_grad == True
         assert pagerank_d.requires_grad == False
 
-        # encode query
-        query_word_emb = self.word_embedding(query_text)  # batch_size, max_query_word, word_dim
-        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb),
-                                                                  self.init_hidden(1, batch_size,
-                                                                                   self.entity_dim))  # 1, batch_size, entity_dim
-        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
         query_rel_emb = query_node_emb  # batch_size, 1, entity_dim
 
         if self.use_kb:
