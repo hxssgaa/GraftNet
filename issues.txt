@@ -1,3 +1,8 @@
 1. Vocab problem, vocabulary should include the relations. Currently, no relation vocabulary included.
 2. Try to understand if GraftNet Actually used the relation embedding.
 3. Try to implement PullNet, pull_facts function should be the key.
+
+New Issue:
+1. PullNet is not learnable, try to figure why pull facts can't be learned.
+2. If PullNet fails. Try to integrate approximated weighted page rank with PullNet. Train first hop and then second hop
+    and so on.

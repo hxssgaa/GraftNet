@@ -5,7 +5,7 @@ from pullnet_data_loader import DataLoader
 from util import *
 
 FACT_FILE = 'datasets/complexwebq/all_facts_v2.json'
-QUESTION_FILE = 'datasets/complexwebq/questions/all_questions.json'
+QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v2.json'
 RAW_QUESTION_IDS = {
     'train': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_train.json'))),
     'dev': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_dev.json'))),
@@ -47,18 +47,20 @@ def train(cfg):
             train_data.reset_batches(is_sequential=cfg['is_debug'])
             # Train
             my_model.train()
-            train_loss, train_hit_at_one, train_precision, train_recall, train_f1, train_max_acc = [], [], [], [], [], []
+            my_model.teacher_force = True
+            train_loss, train_hit_at_one, train_precision, train_recall, train_f1, train_max_acc, train_facts_recall = [], [], [], [], [], [], []
             for iteration in tqdm(range(train_data.num_data // cfg['batch_size'])):
                 batch = train_data.get_batch(iteration, cfg['batch_size'], cfg['fact_dropout'])
-                loss, pred, _ = my_model(batch)
+                loss, pred, _, answer_dist, facts_recall = my_model(batch)
                 pred = pred.data.cpu().numpy()
-                hit_at_one, precision, recall, f1, max_acc = cal_accuracy(pred, batch[-1])
+                hit_at_one, precision, recall, f1, max_acc = cal_accuracy(pred, answer_dist)
                 train_loss.append(loss.item())
                 train_hit_at_one.append(hit_at_one)
                 train_precision.append(precision)
                 train_recall.append(recall)
                 train_f1.append(f1)
                 train_max_acc.append(max_acc)
+                train_facts_recall.append(facts_recall)
                 # back propogate
                 my_model.zero_grad()
                 optimizer.zero_grad()
@@ -70,6 +72,7 @@ def train(cfg):
             print('avg_training_hit@1', sum(train_hit_at_one) / len(train_hit_at_one))
             print('avg_training_precision', sum(train_precision) / len(train_precision))
             print('avg_training_recall', sum(train_recall) / len(train_recall))
+            print('avg_training_facts_recall', sum(train_facts_recall) / len(train_facts_recall))
             print('avg_training_f1', sum(train_f1) / len(train_f1))
 
             print("validating ...")
@@ -97,7 +100,7 @@ def get_model(facts, entity2id, relation2id, cfg, num_kb_relation, num_entities,
     my_model = use_cuda(PullNet(facts, entity2id, relation2id, word_emb_file, entity_emb_file, entity_kge_file, relation_emb_file, relation_kge_file,
                                  cfg['num_layer'], num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
                                  cfg['word_dim'], cfg['kge_dim'], cfg['pagerank_lambda'], cfg['fact_scale'],
-                                 cfg['lstm_dropout'], cfg['linear_dropout'], cfg['fact_dropout'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation']))
+                                 cfg['lstm_dropout'], cfg['linear_dropout'], cfg['fact_dropout'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'], False))
 
     if cfg['load_model_file'] is not None:
         print('loading model from', cfg['load_model_file'])
@@ -114,7 +117,8 @@ def get_model(facts, entity2id, relation2id, cfg, num_kb_relation, num_entities,
 def inference(my_model, valid_data, entity2id, cfg, log_info=False):
     # Evaluation
     my_model.eval()
-    eval_loss, eval_hit_at_one, eval_precision, eval_recall, eval_f1, eval_max_acc = [], [], [], [], [], []
+    my_model.teacher_force = False
+    eval_loss, eval_hit_at_one, eval_precision, eval_recall, eval_f1, eval_max_acc, eval_facts_recall = [], [], [], [], [], [], []
     id2entity = {idx: entity for entity, idx in entity2id.items()}
     valid_data.reset_batches(is_sequential = True)
     test_batch_size = 20
@@ -122,15 +126,16 @@ def inference(my_model, valid_data, entity2id, cfg, log_info=False):
         f_pred = open(cfg['pred_file'], 'w')
     for iteration in tqdm(range(valid_data.num_data // test_batch_size)):
         batch = valid_data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
-        loss, pred, pred_dist = my_model(batch)
+        loss, pred, pred_dist, answer_dist, facts_recall = my_model(batch)
         pred = pred.data.cpu().numpy()
-        hit_at_one, precision, recall, f1, max_acc = cal_accuracy(pred, batch[-1])
+        hit_at_one, precision, recall, f1, max_acc = cal_accuracy(pred, answer_dist)
         if log_info:
             output_pred_dist(pred_dist, batch[-1], id2entity, iteration * test_batch_size, valid_data, f_pred)
         eval_loss.append(loss.item())
         eval_hit_at_one.append(hit_at_one)
         eval_precision.append(precision)
         eval_recall.append(recall)
+        eval_facts_recall.append(facts_recall)
         eval_f1.append(f1)
         eval_max_acc.append(max_acc)
 
@@ -139,6 +144,7 @@ def inference(my_model, valid_data, entity2id, cfg, log_info=False):
     print('avg_hit@1', sum(eval_hit_at_one) / len(eval_hit_at_one))
     print('avg_precision', sum(eval_precision) / len(eval_precision))
     print('avg_recall', sum(eval_recall) / len(eval_recall))
+    print('avg_facts_recall', sum(eval_facts_recall) / len(eval_facts_recall))
     print('avg_f1', sum(eval_f1) / len(eval_f1))
 
     return sum(eval_precision) / len(eval_precision)

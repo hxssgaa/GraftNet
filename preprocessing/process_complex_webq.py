@@ -10,6 +10,7 @@ from preprocessing.use_helper import UseVector
 
 RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
 OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb.pkl'
+QUESTION_FILE = 'datasets/complexwebq/questions/all_questions.json'
 WORD_DIM = 200
 
 
@@ -232,8 +233,49 @@ if __name__ == '__main__':
     # result = process_relation_embedding('datasets/complexwebq/glove.6B.200d.txt', False)
     # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
     # process_entities()
-    process_vocab('datasets/complexwebq/glove.6B.200d.txt')
+    # process_vocab('datasets/complexwebq/glove.6B.200d.txt')
 
+    facts = load_json('datasets/complexwebq/all_facts.json')
+    questions = load_json(QUESTION_FILE)
+    for q in tqdm(questions):
+        q['path_v2'] = []
+        for path in q['path']:
+            if len(path) % 2 == 0:
+                continue
+            for i in range(len(path) // 2):
+                i = i * 2
+                s = path[i] if isinstance(path[i], list) else [path[i]]
+                o = path[i + 2]
+                entities = set()
+                tuples = set()
+                path_info = {'entities': [], 'tuples': []}
+                if i == 0:
+                    s = s[0]
+                    entities.add(s)
+                    for e in o:
+                        entities.add(e)
+                        if s in facts and e in facts[s]:
+                            direction, rel = facts[s][e]
+                            if direction == 0:
+                                tuples.add((s, rel, e))
+                            else:
+                                tuples.add((e, rel, s))
+                else:
+                    for idx in range(min(len(s), len(o))):
+                        sbj = s[idx]
+                        obj = o[idx]
+                        entities.add(sbj)
+                        entities.add(obj)
+                        if sbj in facts and obj in facts[sbj]:
+                            direction, rel = facts[sbj][obj]
+                            if direction == 0:
+                                tuples.add((sbj, rel, obj))
+                            else:
+                                tuples.add((obj, rel, sbj))
+                path_info['entities'] = list(sorted(entities))
+                path_info['tuples'] = list(sorted(tuples))
+                q['path_v2'].append(path_info)
+    save_json(questions, 'datasets/complexwebq/all_questions_v2.json')
 
 
     # facts = load_json('datasets/complexwebq/all_facts.json')

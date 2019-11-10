@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import random
 from torch.autograd import Variable
 import torch.nn as nn
 from util import use_cuda, read_padded
@@ -18,7 +19,7 @@ class PullNet(nn.Module):
     def __init__(self, facts, entity2id, relation2id, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file,
                  pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity,
                  num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, fact_dropout,
-                 use_kb, use_doc, use_inverse_relation):
+                 use_kb, use_doc, use_inverse_relation, teacher_force=False):
         """
         num_relation: number of relation including self-connection
         """
@@ -43,12 +44,12 @@ class PullNet(nn.Module):
 
         # initialize entity embedding
         self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim,
-                                             padding_idx=num_entity, sparse=True)
+                                             padding_idx=0)
         if pretrained_entity_emb_file is not None:
             self.entity_embedding.weight = nn.Parameter(
                 torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type(
                     'torch.FloatTensor'))
-            self.entity_embedding.weight.requires_grad = False
+        self.entity_embedding.weight.requires_grad = False
         if pretrained_entity_kge_file is not None:
             self.has_entity_kge = True
             self.entity_kge = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=kge_dim, padding_idx=num_entity)
@@ -133,6 +134,7 @@ class PullNet(nn.Module):
         self.kld_loss = nn.KLDivLoss()
         self.bce_loss = nn.BCELoss()
         self.bce_loss_logits = nn.BCEWithLogitsLoss()
+        self.teacher_force = teacher_force
 
     def _prepare_question_subgraph(self, question, h_q, iteration_t):
         entities = question['entities']
@@ -145,26 +147,40 @@ class PullNet(nn.Module):
             if not question['subgraph']:
                 question['subgraph']['entities'] = question['entities']
                 question['subgraph']['tuples'] = []
-            return [], related_entities, 1
-        for path in paths:
-            if len(path) % 2 == 0:
+            for p in question['path']:
+                target_entities.update(p[-1])
+            question['answers_hop_%d' % iteration_t] = list(
+                map(lambda x: {'answer_id': x}, list(sorted(target_entities))))
+            return related_entities, 0
+        # idx_iteration = min(iteration_t, len(paths)) - 1
+        # target_entities.update(paths[idx_iteration]['entities'])
+        for p in question['path']:
+            if len(p) % 2 == 0:
                 continue
-            if iteration_t < len(path):
-                target_entities.update(path[iteration_t * 2])
+            if iteration_t * 2 < len(p):
+                target_entities.update(p[iteration_t * 2])
+            else:
+                target_entities.update(p[-1])
         if not target_entities:
             if 'subgraph' not in question:
                 question['subgraph'] = {}
             if not question['subgraph']:
                 question['subgraph']['entities'] = question['entities']
                 question['subgraph']['tuples'] = []
-            return [], related_entities, 1
+            for p in question['path']:
+                if len(p) % 2 == 0:
+                    continue
+                target_entities.update(p[-1])
+            question['answers_hop_%d' % iteration_t] = list(
+                map(lambda x: {'answer_id': x}, list(sorted(target_entities))))
+            return related_entities, 0
 
         related_relations = set()
         for entity in entities:
             if entity in self.facts:
                 related_relations.update(self.facts[entity])
 
-        top_facts = 100
+        top_facts = 500
         related_relations = list(sorted(related_relations))
         related_relations_ids = use_cuda(torch.tensor([self.relation2id[rel] for rel in related_relations]))
         related_relation_emb = self.relation_embedding(related_relations_ids)
@@ -191,9 +207,35 @@ class PullNet(nn.Module):
                     if len(extracted_tuples) >= top_facts:
                         flag = True
                         break
+        random_entities = set()
+        idx = 0
+        flag = False
+        for top_relation in random.sample(top_relations, k=len(top_relations)):
+            if flag:
+                break
+            for entity in entities:
+                if flag:
+                    break
+                if top_relation not in self.facts[entity]:
+                    continue
+                for obj in self.facts[entity][top_relation]:
+                    random_entities.add(entity)
+                    random_entities.add(obj)
+                    idx += 1
+                    if idx >= top_facts:
+                        flag = True
+                        break
         for s, p, o in extracted_tuples:
             related_entities.add(s)
             related_entities.add(o)
+        if self.teacher_force:
+            related_entities.update([e for e in target_entities if e in self.entity2id])
+            idx_iteration = min(iteration_t, len(paths)) - 1
+            for t in question['path_v2'][idx_iteration]['tuples']:
+                if t[0] not in self.entity2id or t[2] not in self.entity2id:
+                    continue
+                if t[0] in target_entities or t[2] in target_entities:
+                    extracted_tuples.add(tuple(t))
         extracted_tuples = list(sorted(extracted_tuples))
         extracted_entities = list(sorted(related_entities))
 
@@ -203,7 +245,7 @@ class PullNet(nn.Module):
             question['subgraph']['entities'] = extracted_entities
             question['subgraph']['tuples'] = extracted_tuples
         question['answers_hop_%d' % iteration_t] = list(map(lambda x: {'answer_id': x}, list(sorted(target_entities))))
-        return len(related_entities & target_entities) / len(target_entities)
+        return related_entities, len(related_entities & target_entities) / len(target_entities), len(random_entities & target_entities) / len(target_entities)
 
     @staticmethod
     def _add_entity_to_map(entity2id, entities, g2l):
@@ -243,7 +285,7 @@ class PullNet(nn.Module):
             total_local_entity += len(g2l)
             max_local_entity = max(max_local_entity, len(g2l))
             next_id += 1
-        print('avg local entity: ', total_local_entity / next_id)
+        # print('avg local entity: ', total_local_entity / next_id)
         return global2local_entity_maps, max_local_entity
 
     def _prepare_data(self, data, iteration_t, global2local_entity_maps, local_entities, kb_adj_mats,
@@ -328,14 +370,21 @@ class PullNet(nn.Module):
 
     def pull_facts(self, h_qs, question_data, iteration_t):
         avg_recall = 0
+        avg_recall2 = 0
         max_facts = 0
         for idx in range(len(question_data)):
             q = question_data[idx]
             h_q = h_qs[idx]
-            recall = self._prepare_question_subgraph(q, h_q[-1], iteration_t)
+            related_entities, recall, recall2 = self._prepare_question_subgraph(q, h_q[-1], iteration_t)
+            mask_entities = [self.entity2id[e] for e in related_entities]
+            self.entity_embedding.weight[mask_entities, :].requires_grad = True
             max_facts = max(max_facts, 2 * len(q['subgraph']['tuples']))
             avg_recall += recall
-        print('pull_facts recall:', avg_recall / len(question_data))
+            avg_recall2 += recall2
+        avg_recall /= len(question_data)
+        avg_recall2 /= len(question_data)
+        print('recall1', avg_recall)
+        print('recall2', avg_recall2)
 
         global2local_entity_maps, max_local_entity = self._build_global2local_entity_maps(question_data)
 
@@ -347,7 +396,7 @@ class PullNet(nn.Module):
         answer_dists = np.zeros((num_data, max_local_entity), dtype=float)
 
         self._prepare_data(question_data, iteration_t, global2local_entity_maps, local_entities, kb_adj_mats, kb_fact_rels, q2e_adj_mats, answer_dists)
-        return local_entities, q2e_adj_mats, self._build_kb_adj_mat(kb_adj_mats, fact_dropout=self.fact_dropout), kb_fact_rels, None, None, answer_dists
+        return local_entities, q2e_adj_mats, self._build_kb_adj_mat(kb_adj_mats, fact_dropout=self.fact_dropout), kb_fact_rels, None, None, answer_dists, avg_recall
 
     def forward(self, batch):
         """
@@ -372,7 +421,7 @@ class PullNet(nn.Module):
             self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim))  # 1, batch_size, entity_dim
         query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)
 
-        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, document_text, entity_pos, answer_dist = self.pull_facts(query_hidden_emb, question_data, 1)
+        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, document_text, entity_pos, answer_dist_np, facts_recall = self.pull_facts(query_hidden_emb, question_data, 1)
 
         batch_size, max_local_entity = local_entity.shape
         _, max_relevant_doc, max_document_word = document_text.shape if self.use_doc else None, None, None
@@ -386,7 +435,7 @@ class PullNet(nn.Module):
             if self.use_doc:
                 document_text = use_cuda(Variable(torch.from_numpy(document_text).type('torch.LongTensor')))
             answer_dist = use_cuda(
-                Variable(torch.from_numpy(answer_dist).type('torch.FloatTensor')))
+                Variable(torch.from_numpy(answer_dist_np).type('torch.FloatTensor')))
         local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
         if self.use_doc:
             document_mask = use_cuda((document_text != self.num_word).type('torch.FloatTensor'))
@@ -599,9 +648,9 @@ class PullNet(nn.Module):
 
         score = score + (1 - local_entity_mask) * VERY_NEG_NUMBER
         pred_dist = self.sigmoid(score) * local_entity_mask
-        pred = torch.topk(score, 7, dim=1)[1]
+        pred = torch.topk(score, 4, dim=1)[1]
 
-        return loss, pred, pred_dist
+        return loss, pred, pred_dist, answer_dist_np, facts_recall
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
         return (use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size))),
