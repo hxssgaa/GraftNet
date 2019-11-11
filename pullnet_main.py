@@ -20,8 +20,8 @@ def train(cfg):
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
 
-    train_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['train']]
-    dev_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['dev']]
+    train_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['train']][:2000]
+    dev_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['dev']][:400]
     test_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['test']]
 
 

@@ -180,12 +180,12 @@ class PullNet(nn.Module):
             if entity in self.facts:
                 related_relations.update(self.facts[entity])
 
-        top_facts = 500
+        top_facts = 25
         related_relations = list(sorted(related_relations))
         related_relations_ids = use_cuda(torch.tensor([self.relation2id[rel] for rel in related_relations]))
         related_relation_emb = self.relation_embedding(related_relations_ids)
         relation_scores = torch.sigmoid(self.relation_linear(related_relation_emb) @ (h_q.reshape(h_q.size(0), 1)))
-        top_scores = torch.argsort(relation_scores, dim=0)
+        top_scores = torch.argsort(relation_scores, dim=0, descending=True)
         top_relations = [related_relations[e.item()] for e in top_scores.cpu()]
 
         extracted_tuples = set()
@@ -383,8 +383,8 @@ class PullNet(nn.Module):
             avg_recall2 += recall2
         avg_recall /= len(question_data)
         avg_recall2 /= len(question_data)
-        print('recall1', avg_recall)
-        print('recall2', avg_recall2)
+        # print('recall1', avg_recall)
+        # print('recall2', avg_recall2)
 
         global2local_entity_maps, max_local_entity = self._build_global2local_entity_maps(question_data)
 
