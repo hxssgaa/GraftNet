@@ -10,11 +10,12 @@ from tqdm import tqdm
 
 
 class DataLoader():
-    def __init__(self, questions, facts, iteration_t, documents, document_entity_indices, document_texts, word2id, relation2id,
+    def __init__(self, questions, facts, iteration_t, documents, document_entity_indices, document_texts, word2id, relation2id, entity2id,
                  max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation):
         self.use_kb = use_kb
         self.use_doc = use_doc
         self.use_inverse_relation = use_inverse_relation
+        self.iteration_t = iteration_t
         self.max_local_entity = 0
         self.max_relevant_doc = 0
         self.max_facts = 0
@@ -29,26 +30,20 @@ class DataLoader():
         else:
             self.num_kb_relation = 0
 
-        g = nx.Graph()
-        for k1, v1 in tqdm(self.facts.items()):
-            for k2, v2 in v1.items():
-                if v2[0] == 0:
-                    g.add_edge(k1, k2, data=v2[1])
-                else:
-                    g.add_edge(k2, k1, data=v2[1])
+        # g = nx.Graph()
+        # for k1, v1 in tqdm(self.facts.items()):
+        #     for k2, v2 in v1.items():
+        #         if v2[0] == 0:
+        #             g.add_edge(k1, k2, data=v2[1])
+        #         else:
+        #             g.add_edge(k2, k1, data=v2[1])
 
         self.data = []
-        self.entity2id = set()
-        avg_recall = 0
+        self.entity2id = entity2id
         for q in tqdm(questions):
-            _, q_related_entities, recall = self._prepare_question_subgraph(g, q, iteration_t)
-            avg_recall += recall
-            self.entity2id.update(q_related_entities)
             self.data.append(q)
             self.max_relevant_doc = max(self.max_relevant_doc, len(q['passages'])) if use_doc else None
             self.max_facts = max(self.max_facts, 2 * len(q['subgraph']['tuples']))
-        avg_recall /= len(questions)
-        print('avg recall:', avg_recall)
         print('max_relevant_doc: ', self.max_relevant_doc)
         print('max_facts: ', self.max_facts)
         self.num_data = len(self.data)
@@ -57,7 +52,6 @@ class DataLoader():
         print('building word index ...')
         self.word2id = word2id
         self.relation2id = relation2id
-        self.entity2id = list(sorted(self.entity2id))
         self.documents = documents
         self.id2entity = {i: entity for entity, i in self.entity2id.items()}
 
@@ -198,10 +192,12 @@ class DataLoader():
                     self.rel_document_ids[next_id, pid] = passage['document_id']
 
             # construct distribution for answers
-            for answer in sample['answers']:
-                keyword = 'answer_id'
-                if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
-                    self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
+            for path in sample['path']:
+                if len(path) % 2 == 0:
+                    continue
+                for e in path[self.iteration_t * 2]:
+                    if e in self.entity2id and self.entity2id[e] in g2l:
+                        self.answer_dists[next_id, g2l[self.entity2id[e]]] = 1.0
 
             self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int),
                                          np.array([1.0] * len(entity2fact_f))), (

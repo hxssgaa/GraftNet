@@ -14,7 +14,7 @@ def sparse_bmm(a, b):
 
 
 class GraftNet(nn.Module):
-    def __init__(self, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file, pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity, num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, use_kb, use_doc):
+    def __init__(self, trainable_entities, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file, pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity, num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, use_kb, use_doc):
         """
         num_relation: number of relation including self-connection
         """
@@ -36,7 +36,8 @@ class GraftNet(nn.Module):
         self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim, padding_idx=num_entity)
         if pretrained_entity_emb_file is not None:
             self.entity_embedding.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
-            self.entity_embedding.weight.requires_grad = False
+        self.entity_embedding.weight.requires_grad = False
+        self.entity_embedding.weight[list(trainable_entities), :].requires_grad = True
         if pretrained_entity_kge_file is not None:
             self.has_entity_kge = True
             self.entity_kge = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=kge_dim, padding_idx=num_entity)
