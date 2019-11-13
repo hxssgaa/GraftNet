@@ -4,7 +4,26 @@ from string import punctuation
 
 import numpy as np
 import wordninja
-from tqdm import tqdm
+import pickle as pkl
+from scipy.sparse import csr_matrix
+from tqdm import tqdm, trange
+from preprocessing.use_helper import UseVector
+from localgraphclustering import *
+from sklearn.preprocessing import normalize
+
+
+QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v2.json'
+FACTS_FILE = 'datasets/complexwebq/all_facts.json'
+RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
+OUT_QUESTION_EMBEDDING = 'datasets/complexwebq/all_questions_embeddings_v2.pkl'
+OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb_v2.pkl'
+
+MAX_FACTS = 5000000
+MAX_ITER = 2
+RESTART = 0.8
+NOTFOUNDSCORE = 0.
+EXPONENT = 2.
+MAX_ENT = 200
 
 
 def clean_text(text, filter_dot=False):
@@ -151,6 +170,293 @@ def process_vocab(embeddings_file):
     print('test coverage: ', len(corpus & test_corpus) / len(test_corpus))
 
 
+def question_embedding(questions, use_f=True):
+    if os.path.exists(OUT_QUESTION_EMBEDDING) and use_f:
+        return pkl.load(open(OUT_QUESTION_EMBEDDING, 'rb'))
+
+    question_emb = {}
+    use = UseVector()
+
+    # Get the work2question map and the question word length map.
+    for ii, question in tqdm(enumerate(questions), total=len(questions)):
+        raw_text = question['question']
+        q_id = question["ID"]
+        q_emb = use.get_vector(raw_text)[0]
+        question_emb[q_id] = q_emb
+
+    pkl.dump(question_emb, open(OUT_QUESTION_EMBEDDING, "wb"))
+
+    return question_emb
+
+
+def relation_embeddings(use_f=True):
+    if os.path.exists(OUT_RELATIONS_EMBEDDING) and use_f:
+        return pkl.load(open(OUT_RELATIONS_EMBEDDING, 'rb'))
+
+    relation_emb = {}
+    use = UseVector()
+
+    with open(RELATIONS_FILE) as f:
+        relations = f.readlines()
+    for ii, line in tqdm(enumerate(relations), total=len(relations)):
+        relation = line.strip()
+        if relation in ["GreaterThan", "LessThan", "NotEquals"]:
+            print(relation)
+            relation = 'common.' + relation + '.object'
+        elif relation.count('.') < 2:
+            print(relation)
+            relation = 'common.notable_for.object'
+        domain, typ, prop = relation.split(".")[-3:]
+        relation_emb[relation] = (use.get_vector(domain)[0] + 2 * use.get_vector(typ)[0] + 3 * use.get_vector(prop)[0]) / 6
+
+    pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
+    return relation_emb
+
+
+def _personalized_pagerank(seed, W):
+    """Return the PPR vector for the given seed and adjacency matrix.
+
+    Args:
+        seed: A sparse matrix of size E x 1.
+        W: A sparse matrix of size E x E whose rows sum to one.
+
+    Returns:
+        ppr: A vector of size E.
+    """
+    restart_prob = RESTART
+    r = restart_prob * seed
+    s_ovr = np.copy(r)
+    for i in range(MAX_ITER):
+        r_new = (1. - restart_prob) * (W.transpose().dot(r))
+        s_ovr = s_ovr + r_new
+        delta = abs(r_new.sum())
+        if delta < 1e-5: break
+        r = r_new
+    return np.squeeze(s_ovr)
+
+
+def _filter_relation(relation):
+    if relation == "<fb:common.topic.notable_types>": return False
+    domain = relation[4:-1].split(".")[0]
+    if domain == "type" or domain == "common": return True
+    return False
+
+
+def _convert_to_readable(tuples, inv_map):
+    readable_tuples = []
+    for tup in tuples:
+        readable_tuples.append([
+            inv_map[tup[0]],
+            tup[1],
+            inv_map[tup[2]],
+        ])
+    return readable_tuples
+
+
+def m1(qs, q_embs, r_embs, rel_indexer):
+    qs, sidx = qs
+    avg_recall = 0
+    t = trange(len(qs), desc='recall', leave=True)
+    total = 0
+    facts = load_json('datasets/complexwebq/all_facts.json')
+    for idx, q in tqdm(enumerate(qs)):
+        try:
+            q_emb = q_embs[q['ID']]
+            keys = q['entities']
+            new_keys = set()
+            sources = []
+            targets = []
+            local_num_entities = 0
+            local_entities_map = {}
+            local_relation_map = {}
+            for k1 in keys:
+                if k1 not in local_entities_map:
+                    local_entities_map[k1] = local_num_entities
+                    local_num_entities += 1
+                for k2 in facts[k1]:
+                    if _filter_relation(facts[k1][k2][1]): continue
+                    if facts[k1][k2][1] not in rel_indexer:
+                        continue
+                    if k2 not in local_entities_map:
+                        local_entities_map[k2] = local_num_entities
+                        local_num_entities += 1
+                    new_keys.add(k2)
+                    if facts[k1][k2][0] == 0:
+                        sources.append(local_entities_map[k1])
+                        targets.append(local_entities_map[k2])
+                    else:
+                        sources.append(local_entities_map[k2])
+                        targets.append(local_entities_map[k1])
+                    rel = facts[k1][k2][1]
+                    # rel_idx = rel_indexer[rel]
+                    # if rel in r_embs:
+                    #     score = np.dot(q_emb, r_embs[rel]) / (
+                    #                 np.linalg.norm(q_emb) * np.linalg.norm(r_emb[rel]))
+                    # else:
+                    #     score = 0.1
+                    # weights.append(0.5)
+                    if rel not in local_relation_map:
+                        local_relation_map[rel] = [[], []]
+                    local_relation_map[rel][0].append(sources[-1])
+                    local_relation_map[rel][1].append(targets[-1])
+                    local_relation_map[rel][0].append(targets[-1])
+                    local_relation_map[rel][1].append(sources[-1])
+            # keys = new_keys
+            # new_keys = set()
+            # for k1 in keys:
+            #     if k1 not in local_entities_map:
+            #         local_entities_map[k1] = local_num_entities
+            #         local_num_entities += 1
+            #     for k2 in second_fact[k1]:
+            #         if second_fact[k1][k2][1] not in rel_indexer:
+            #             continue
+            #         if k2 not in local_entities_map:
+            #             local_entities_map[k2] = local_num_entities
+            #             local_num_entities += 1
+            #         new_keys.add(k2)
+            #         if second_fact[k1][k2][0] == 0:
+            #             sources.append(local_entities_map[k1])
+            #             targets.append(local_entities_map[k2])
+            #         else:
+            #             sources.append(local_entities_map[k2])
+            #             targets.append(local_entities_map[k1])
+            #         rel = second_fact[k1][k2][1]
+            #         rel_idx = rel_indexer[rel]
+            #         weights.append(scores[sidx + idx][rel_idx])
+            #         if rel_idx not in local_relation_map:
+            #             local_relation_map[rel_idx] = [[], []]
+            #         local_relation_map[rel_idx][0].append(sources[-1])
+            #         local_relation_map[rel_idx][1].append(targets[-1])
+            # keys = new_keys
+            # new_keys = set()
+            #         for k1 in keys:
+            #             if k1 not in local_entities_map:
+            #                 local_entities_map[k1] = local_num_entities
+            #                 local_num_entities += 1
+            #             for k2 in third_fact[k1]:
+            #                 if third_fact[k1][k2][1] not in rel_indexer:
+            #                     continue
+            #                 if k2 not in local_entities_map:
+            #                     local_entities_map[k2] = local_num_entities
+            #                     local_num_entities += 1
+            #                 new_keys.add(k2)
+            #                 if third_fact[k1][k2][0] == 0:
+            #                     sources.append(local_entities_map[k1])
+            #                     targets.append(local_entities_map[k2])
+            #                 else:
+            #                     sources.append(local_entities_map[k2])
+            #                     targets.append(local_entities_map[k1])
+            #                 rel = third_fact[k1][k2][1]
+            #                 rel_idx = rel_indexer[rel]
+            #                 weights.append(scores[sidx + idx][rel_idx])
+            #                 if rel_idx not in local_relation_map:
+            #                     local_relation_map[rel_idx] = [[], []]
+            #                 local_relation_map[rel_idx][0].append(sources[-1])
+            #                 local_relation_map[rel_idx][1].append(targets[-1])
+            reverse_local_entities_map = {v: k for k, v in local_entities_map.items()}
+            # g = GraphLocal()
+            # if not sources:
+            #     continue
+            # g.list_to_gl(sources, targets, weights)
+            # entities = list(map(local_entities_map.get, q['entities']))
+            # res = approximate_PageRank_weighted(g, entities)
+            targets = set()
+            for path in q['path']:
+                if len(path) % 2 != 0:
+                    targets.update([local_entities_map[x] for x in path[2] if x in local_entities_map])
+            total += 1
+            entities = [local_entities_map[key] for key in keys]
+            # ppr = np.argsort(res[1])[::-1][:100]
+            # extracted_ents = res[0][ppr]
+            # extracted_scores = res[1][ppr]
+            # extracted_tuples = []
+            for rel in local_relation_map:
+                row_ones, col_ones = local_relation_map[rel]
+                m = csr_matrix((np.ones((len(row_ones),)), (np.array(row_ones), np.array(col_ones))),
+                               shape=(local_num_entities, local_num_entities))
+                local_relation_map[rel] = normalize(m, norm="l1", axis=1)
+                if rel not in r_embs:
+                    score = NOTFOUNDSCORE
+                else:
+                    score = np.dot(q_emb, r_embs[rel]) / (
+                            np.linalg.norm(q_emb) *
+                            np.linalg.norm(r_embs[rel]))
+                local_relation_map[rel] = local_relation_map[rel] * np.power(score, EXPONENT)
+            adj_mat = sum(local_relation_map.values()) / len(local_relation_map)
+
+            seed = np.zeros((adj_mat.shape[0], 1))
+            seed[entities] = np.expand_dims(np.arange(len(entities), 0, -1),
+                                            axis=1)
+            seed = seed / seed.sum()
+            ppr = _personalized_pagerank(seed, adj_mat)
+            sorted_idx = np.argsort(ppr)[::-1]
+            extracted_ents = sorted_idx[:MAX_ENT]
+            extracted_scores = ppr[sorted_idx[:MAX_ENT]]
+            # check if any ppr values are nearly zero
+            zero_idx = np.where(ppr[extracted_ents] < 1e-6)[0]
+            if zero_idx.shape[0] > 0:
+                extracted_ents = extracted_ents[:zero_idx[0]]
+            extracted_tuples = []
+            ents_in_tups = set()
+            for relation in local_relation_map:
+                submat = local_relation_map[relation][extracted_ents, :]
+                submat = submat[:, extracted_ents]
+                row_idx, col_idx = submat.nonzero()
+                for ii in range(row_idx.shape[0]):
+                    extracted_tuples.append(
+                        (extracted_ents[row_idx[ii]], relation,
+                         extracted_ents[col_idx[ii]]))
+                    ents_in_tups.add((extracted_ents[row_idx[ii]],
+                                      extracted_scores[row_idx[ii]]))
+                    ents_in_tups.add((extracted_ents[col_idx[ii]],
+                                      extracted_scores[col_idx[ii]]))
+                # submat = m[extracted_ents, :]
+                # submat = submat[:, extracted_ents]
+                # row_idx, col_idx = submat.nonzero()
+                # for ii in range(row_idx.shape[0]):
+                #     extracted_tuples.append(
+                #         (reverse_local_entities_map[extracted_ents[row_idx[ii]]], reverse_local_relations_map[rel],
+                #          reverse_local_entities_map[extracted_ents[col_idx[ii]]]))
+            # extracted_ent_sets = set(extracted_ents)
+            if not targets:
+                recall = 0
+            else:
+                recall = len(set(extracted_ents) & targets) / len(targets)
+            extracted_ents = list(map(reverse_local_entities_map.get, extracted_ents))
+            extracted_scores = list(map(float, extracted_scores))
+            avg_recall += recall
+
+            q['subgraph'] = {
+                'entities': extracted_ents,
+                'scores': extracted_scores,
+                'tuples': _convert_to_readable(extracted_tuples, reverse_local_entities_map),
+                'recall': recall
+            }
+
+            # save_json(q, 'data/m1/%s.json' % q['ID'])
+
+            t.set_description("recall: %.2f" % (avg_recall / total))
+            t.refresh()  # to show immediately the update
+            t.update(1)
+        except Exception as e:
+            print(e)
+            print(qs['ID'])
+    save_json(qs, 'datasets/complexwebq/all_questions_v3.json')
+
+
 if __name__ == '__main__':
     # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
-    process_entities()
+    # process_entities()
+    rel_indexer = {}
+    with open('datasets/complexwebq/relations.txt') as f:
+        lines = f.readlines()
+        for i, line in enumerate(lines):
+            line = line.strip()
+            rel_indexer[line] = i
+    questions = load_json(QUESTION_FILE)
+
+    q_emb = question_embedding(questions)
+
+    r_emb = relation_embeddings(questions)
+
+    m1((questions, 0), q_emb, r_emb, rel_indexer)

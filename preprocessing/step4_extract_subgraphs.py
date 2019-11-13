@@ -25,7 +25,7 @@ import os
 import json
 import random
 import numpy as np
-import cPickle as pkl
+import pickle as pkl
 from tqdm import tqdm
 from scipy.sparse import csr_matrix
 from sklearn.preprocessing import normalize
@@ -217,8 +217,8 @@ if __name__ == "__main__":
     random.shuffle(questions)
     seed_map = _read_seeds()
 
-    relation_embeddings = pkl.load(open(relation_emb))
-    question_embeddings = pkl.load(open(question_emb))
+    relation_embeddings = pkl.load(open(relation_emb, 'rb'))
+    question_embeddings = pkl.load(open(question_emb, 'rb'))
 
     with open(output_json, "wb") as fo:
         answer_recall, total = 0.0, 0
