@@ -168,12 +168,15 @@ def calc_f1(gold_list, pred_list):
 
 
 def output_pred_dist(pred_dist, answer_dist, id2entity, start_id, data_loader, f_pred):
+    res = []
     for i, p_dist in enumerate(pred_dist):
         data_id = start_id + i
         l2g = {l:g for g, l in data_loader.global2local_entity_maps[data_id].items()}
-        output_dist = {id2entity[l2g[j]]: float(prob) for j, prob in enumerate(p_dist.data.cpu().numpy()) if j < len(l2g)}
-        answers = [answer['text'] if type(answer['answer_id']) == int else answer['answer_id'] for answer in data_loader.data[data_id]['answers']]
-        f_pred.write(json.dumps({'dist': output_dist, 'answers':answers, 'seeds': data_loader.data[data_id]['entities'], 'tuples': data_loader.data[data_id]['subgraph']['tuples']}) + '\n')
+        output_dist = [id2entity[l2g[j]] for j in p_dist if j < len(l2g)]
+        res.append(output_dist)
+        # answers = [answer['text'] if type(answer['answer_id']) == int else answer['answer_id'] for answer in data_loader.data[data_id]['answers']]
+        # f_pred.write(json.dumps({'dist': output_dist, 'answers':answers, 'seeds': data_loader.data[data_id]['entities'], 'tuples': data_loader.data[data_id]['subgraph']['tuples']}) + '\n')
+    return res
 
 class LeftMMFixed(torch.autograd.Function):
     """

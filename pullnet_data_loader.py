@@ -95,7 +95,7 @@ class DataLoader():
         for path in all_paths:
             if len(path) % 2 == 0:
                 continue
-            target_entities.update(path[iteration_t * 2])
+            target_entities.update(path[-1])
         if not target_entities:
             return tuples, related_entities, 1
 
@@ -195,7 +195,7 @@ class DataLoader():
             for path in sample['path']:
                 if len(path) % 2 == 0:
                     continue
-                for e in path[self.iteration_t * 2]:
+                for e in path[self.iteration_t * 2 if (self.iteration_t * 2 < len(path)) else -1]:
                     if e in self.entity2id and self.entity2id[e] in g2l:
                         self.answer_dists[next_id, g2l[self.entity2id[e]]] = 1.0
 

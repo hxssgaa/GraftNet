@@ -1,6 +1,8 @@
 import json
 import os
+from multiprocessing.pool import Pool
 from string import punctuation
+from functools import partial
 
 import numpy as np
 import wordninja
@@ -11,8 +13,7 @@ from preprocessing.use_helper import UseVector
 from localgraphclustering import *
 from sklearn.preprocessing import normalize
 
-
-QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v2.json'
+QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop3.json'
 FACTS_FILE = 'datasets/complexwebq/all_facts.json'
 RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
 OUT_QUESTION_EMBEDDING = 'datasets/complexwebq/all_questions_embeddings_v2.pkl'
@@ -24,6 +25,7 @@ RESTART = 0.8
 NOTFOUNDSCORE = 0.
 EXPONENT = 2.
 MAX_ENT = 200
+PARALLEL_PROCESSOR = 8
 
 
 def clean_text(text, filter_dot=False):
@@ -160,7 +162,8 @@ def process_vocab(embeddings_file):
         test_corpus.update(processed_question)
     corpus.add('__unk__')
     corpus_list = list(sorted(corpus))
-    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 100) for word in corpus_list])
+    word_emb_npy = np.array(
+        [word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 100) for word in corpus_list])
     with open('datasets/complexwebq/vocab.txt', 'w') as f:
         for e in corpus_list:
             f.writelines(e + '\n')
@@ -207,7 +210,8 @@ def relation_embeddings(use_f=True):
             print(relation)
             relation = 'common.notable_for.object'
         domain, typ, prop = relation.split(".")[-3:]
-        relation_emb[relation] = (use.get_vector(domain)[0] + 2 * use.get_vector(typ)[0] + 3 * use.get_vector(prop)[0]) / 6
+        relation_emb[relation] = (use.get_vector(domain)[0] + 2 * use.get_vector(typ)[0] + 3 * use.get_vector(prop)[
+            0]) / 6
 
     pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
     return relation_emb
@@ -252,17 +256,20 @@ def _convert_to_readable(tuples, inv_map):
         ])
     return readable_tuples
 
+facts = load_json('datasets/complexwebq/all_facts.json')
 
-def m1(qs, q_embs, r_embs, rel_indexer):
-    qs, sidx = qs
+def m1(q_embs, r_embs, rel_indexer, qs):
     avg_recall = 0
     t = trange(len(qs), desc='recall', leave=True)
     total = 0
-    facts = load_json('datasets/complexwebq/all_facts.json')
     for idx, q in tqdm(enumerate(qs)):
         try:
             q_emb = q_embs[q['ID']]
-            keys = q['entities']
+            if 'hop_3' not in q:
+                keys = q['entities']
+            else:
+                keys = q['hop_3']
+
             new_keys = set()
             sources = []
             targets = []
@@ -360,11 +367,14 @@ def m1(qs, q_embs, r_embs, rel_indexer):
             # g.list_to_gl(sources, targets, weights)
             # entities = list(map(local_entities_map.get, q['entities']))
             # res = approximate_PageRank_weighted(g, entities)
+            hop = 2
             targets = set()
             for path in q['path']:
                 if len(path) % 2 != 0:
-                    targets.update([local_entities_map[x] for x in path[2] if x in local_entities_map])
-            total += 1
+                    # for x in path[hop * 2 if (hop * 2 < len(path)) else -1]:
+                    for x in path[-1]:
+                        if x in local_entities_map:
+                            targets.add(local_entities_map[x])
             entities = [local_entities_map[key] for key in keys]
             # ppr = np.argsort(res[1])[::-1][:100]
             # extracted_ents = res[0][ppr]
@@ -418,18 +428,31 @@ def m1(qs, q_embs, r_embs, rel_indexer):
                 #         (reverse_local_entities_map[extracted_ents[row_idx[ii]]], reverse_local_relations_map[rel],
                 #          reverse_local_entities_map[extracted_ents[col_idx[ii]]]))
             # extracted_ent_sets = set(extracted_ents)
+
+            subgraph_entities = set(q['subgraph']['entities']) if 'subgraph' in q and 'entities' in q[
+                'subgraph'] else set()
+            subgraph_tuples = set(map(tuple, q['subgraph']['tuples'])) if 'subgraph' in q and 'tuples' in q[
+                'subgraph'] else set()
+
+            extracted_ents = list(map(reverse_local_entities_map.get, extracted_ents))
+            extracted_scores = list(map(float, extracted_scores))
+
+            subgraph_entities.update(extracted_ents)
+            subgraph_tuples.update(list(map(tuple, _convert_to_readable(extracted_tuples, reverse_local_entities_map))))
+            targets = set(map(reverse_local_entities_map.get, targets))
+
+
             if not targets:
                 recall = 0
             else:
-                recall = len(set(extracted_ents) & targets) / len(targets)
-            extracted_ents = list(map(reverse_local_entities_map.get, extracted_ents))
-            extracted_scores = list(map(float, extracted_scores))
+                recall = len((set(extracted_ents)) & targets) / len(targets)
             avg_recall += recall
+            total += 1
 
             q['subgraph'] = {
-                'entities': extracted_ents,
+                'entities': list(subgraph_entities),
                 'scores': extracted_scores,
-                'tuples': _convert_to_readable(extracted_tuples, reverse_local_entities_map),
+                'tuples': list(subgraph_tuples),
                 'recall': recall
             }
 
@@ -441,7 +464,8 @@ def m1(qs, q_embs, r_embs, rel_indexer):
         except Exception as e:
             print(e)
             print(qs['ID'])
-    save_json(qs, 'datasets/complexwebq/all_questions_v3.json')
+    return qs
+    # save_json(qs, 'datasets/complexwebq/all_questions_v3_hop2_input.json')
 
 
 if __name__ == '__main__':
@@ -459,4 +483,12 @@ if __name__ == '__main__':
 
     r_emb = relation_embeddings(questions)
 
-    m1((questions, 0), q_emb, r_emb, rel_indexer)
+    _m1 = partial(m1, q_emb, r_emb, rel_indexer)
+
+    with Pool(processes=PARALLEL_PROCESSOR) as pool:
+        res = pool.map(_m1,
+                       [questions[i * len(questions) // PARALLEL_PROCESSOR:
+                                  (i + 1) * len(questions) // PARALLEL_PROCESSOR] for i in range(PARALLEL_PROCESSOR)])
+
+    final_questions = [item for sublist in res for item in sublist]
+    save_json(final_questions, 'datasets/complexwebq/questions/all_questions_v3_hop4_input.json')
