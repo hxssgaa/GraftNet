@@ -5,7 +5,7 @@ from util import *
 from graftnet import GraftNet
 
 FACT_FILE = 'datasets/complexwebq/all_facts.json'
-QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop4_input.json'
+QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop3_input.json'
 OUT_PREDICTION_QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop%d.json'
 RAW_QUESTION_IDS = {
     'train': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_train.json'))),
@@ -125,7 +125,7 @@ def test(cfg):
 def prediction(cfg, t):
     questions = load_json(QUESTION_FILE)
 
-    # test_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['test']]
+    test_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['test']]
     facts = None
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
@@ -134,7 +134,7 @@ def prediction(cfg, t):
     trainable_entities = set()
 
     documents, document_entity_indices, document_texts = None, None, None
-    data = DataLoader(questions, facts, t, documents, document_entity_indices,
+    data = DataLoader(test_questions, facts, t, documents, document_entity_indices,
                             document_texts, word2id, relation2id, entity2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
@@ -171,7 +171,7 @@ def prediction(cfg, t):
     print('avg_recall', sum(eval_recall) / len(eval_recall))
     print('avg_f1', sum(eval_f1) / len(eval_f1))
 
-    save_json(questions, OUT_PREDICTION_QUESTION_FILE % t)
+    # save_json(questions, OUT_PREDICTION_QUESTION_FILE % t)
 
 
 def get_model(trainable_entities, facts, entity2id, relation2id, cfg, num_kb_relation, num_entities, num_vocab):
