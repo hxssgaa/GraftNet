@@ -32,7 +32,7 @@ def train(cfg, is_test=False):
             trainable_entities.add(entity2id[s])
             trainable_entities.add(entity2id[o])
 
-    t = 4
+    t = 3
     train_documents, train_document_entity_indices, train_document_texts = None, None, None
     train_data = DataLoader(train_questions, facts, t, train_documents, train_document_entity_indices, train_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
