@@ -95,7 +95,7 @@ class DataLoader():
         for path in all_paths:
             if len(path) % 2 == 0:
                 continue
-            target_entities.update(path[-1])
+            target_entities.update(path[iteration_t * 2 if (iteration_t * 2 < len(path)) else -1])
         if not target_entities:
             return tuples, related_entities, 1
 
@@ -116,6 +116,17 @@ class DataLoader():
             question['subgraph']['entities'] = related_entities
             question['subgraph']['tuples'] = tuples
         return tuples, related_entities, len(related_entities & target_entities) / len(target_entities)
+
+    def _prepare_teacher_forcing_subgraph(self, q):
+        t = self.iteration_t
+        entities = set(q['subgraph']['entities'])
+        tuples = set(map(tuple, q['subgraph']['tuples']))
+
+        entities.update(q['path_v2'][t - 1]['entities'])
+        tuples.update(map(tuple, q['path_v2'][t - 1]['tuples']))
+
+        q['subgraph']['entities'] = list(entities)
+        q['subgraph']['tuples'] = list(tuples)
 
     def _prepare_data(self):
         """

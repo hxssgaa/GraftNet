@@ -471,24 +471,27 @@ def m1(q_embs, r_embs, rel_indexer, qs):
 if __name__ == '__main__':
     # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
     # process_entities()
-    rel_indexer = {}
-    with open('datasets/complexwebq/relations.txt') as f:
-        lines = f.readlines()
-        for i, line in enumerate(lines):
-            line = line.strip()
-            rel_indexer[line] = i
-    questions = load_json(QUESTION_FILE)
-
-    q_emb = question_embedding(questions)
-
-    r_emb = relation_embeddings(questions)
-
-    _m1 = partial(m1, q_emb, r_emb, rel_indexer)
-
-    with Pool(processes=PARALLEL_PROCESSOR) as pool:
-        res = pool.map(_m1,
-                       [questions[i * len(questions) // PARALLEL_PROCESSOR:
-                                  (i + 1) * len(questions) // PARALLEL_PROCESSOR] for i in range(PARALLEL_PROCESSOR)])
-
-    final_questions = [item for sublist in res for item in sublist]
-    save_json(final_questions, 'datasets/complexwebq/questions/all_questions_v3_hop4_input.json')
+    # rel_indexer = {}
+    # with open('datasets/complexwebq/relations.txt') as f:
+    #     lines = f.readlines()
+    #     for i, line in enumerate(lines):
+    #         line = line.strip()
+    #         rel_indexer[line] = i
+    # questions = load_json(QUESTION_FILE)
+    #
+    # q_emb = question_embedding(questions)
+    #
+    # r_emb = relation_embeddings(questions)
+    #
+    # _m1 = partial(m1, q_emb, r_emb, rel_indexer)
+    #
+    # with Pool(processes=PARALLEL_PROCESSOR) as pool:
+    #     res = pool.map(_m1,
+    #                    [questions[i * len(questions) // PARALLEL_PROCESSOR:
+    #                               (i + 1) * len(questions) // PARALLEL_PROCESSOR] for i in range(PARALLEL_PROCESSOR)])
+    #
+    # final_questions = [item for sublist in res for item in sublist]
+    # save_json(final_questions, 'datasets/complexwebq/questions/all_questions_v3_hop4_input.json')
+    relation_emb_100d = np.load('datasets/complexwebq/relation_emb_100d.npy')
+    bi_direction_relation_emb_100d = np.concatenate((relation_emb_100d, relation_emb_100d), axis=0)
+    np.save('datasets/complexwebq/birelation_emb_100d.npy', bi_direction_relation_emb_100d)

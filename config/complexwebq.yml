@@ -10,13 +10,13 @@ entity2id: 'entities_v2.txt'
 word_emb_file: "word_emb_100d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: #"relation_emb_100d.npy"
+relation_emb_file: #"birelation_emb_100d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 
 to_save_model: True
-save_model_file: "model/complexwebq/best_model_hybrid4"
+save_model_file: "model/complexwebq/best_model_hybrid_trial1_1"
 pred_file: "model/complexwebq/pred_hybrid"
-load_model_file: "model/complexwebq/best_model_hybrid3"
+load_model_file: "model/complexwebq/best_model_hybrid"
 
 # graph options
 fact_dropout: 0.1

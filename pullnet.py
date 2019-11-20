@@ -5,7 +5,7 @@ from util import *
 from graftnet import GraftNet
 
 FACT_FILE = 'datasets/complexwebq/all_facts.json'
-QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop3_input.json'
+QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop1.json'
 OUT_PREDICTION_QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop%d.json'
 RAW_QUESTION_IDS = {
     'train': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_train.json'))),
@@ -32,7 +32,7 @@ def train(cfg, is_test=False):
             trainable_entities.add(entity2id[s])
             trainable_entities.add(entity2id[o])
 
-    t = 3
+    t = 1
     train_documents, train_document_entity_indices, train_document_texts = None, None, None
     train_data = DataLoader(train_questions, facts, t, train_documents, train_document_entity_indices, train_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
@@ -41,14 +41,14 @@ def train(cfg, is_test=False):
                             word2id, relation2id, entity2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
-    test_documents, test_document_entity_indices, test_document_texts = None, None, None
-    test_data = DataLoader(test_questions, facts, t, test_documents, test_document_entity_indices, test_document_texts,
-                            word2id, relation2id, entity2id, cfg['max_query_word'],
-                            cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
+    # test_documents, test_document_entity_indices, test_document_texts = None, None, None
+    # test_data = DataLoader(test_questions, facts, t, test_documents, test_document_entity_indices, test_document_texts,
+    #                         word2id, relation2id, entity2id, cfg['max_query_word'],
+    #                         cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
     # create model & set parameters
     my_model = get_model(trainable_entities, facts, entity2id, relation2id, cfg, train_data.num_kb_relation, len(entity2id),
-                         len(word2id))
+                         len(word2id), 3)
 
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(trainable_parameters, lr=cfg['learning_rate'])
@@ -93,10 +93,6 @@ def train(cfg, is_test=False):
                     torch.save(my_model.state_dict(), cfg['save_model_file'])
                     best_dev_acc = eval_acc
 
-                if is_test:
-                    print('testing...')
-                    test_acc = inference(my_model, test_data, entity2id, cfg)
-
         except KeyboardInterrupt:
             break
 
@@ -118,7 +114,7 @@ def test(cfg):
                             word2id, relation2id, entity2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
-    my_model = get_model(cfg, test_data.num_kb_relation, len(entity2id), len(word2id))
+    my_model = get_model(cfg, test_data.num_kb_relation, len(entity2id), len(word2id), 1)
     test_acc = inference(my_model, test_data, entity2id, cfg, log_info=True)
 
 
@@ -142,7 +138,7 @@ def prediction(cfg, t):
     # create model & set parameters
     my_model = get_model(trainable_entities, facts, entity2id, relation2id, cfg, data.num_kb_relation,
                          len(entity2id),
-                         len(word2id))
+                         len(word2id), 3)
     # Evaluation
     my_model.eval()
     eval_loss, eval_hit_at_one, eval_precision, eval_recall, eval_f1, eval_max_acc = [], [], [], [], [], []
@@ -174,7 +170,7 @@ def prediction(cfg, t):
     # save_json(questions, OUT_PREDICTION_QUESTION_FILE % t)
 
 
-def get_model(trainable_entities, facts, entity2id, relation2id, cfg, num_kb_relation, num_entities, num_vocab):
+def get_model(trainable_entities, facts, entity2id, relation2id, cfg, num_kb_relation, num_entities, num_vocab, num_layer):
     word_emb_file = None if cfg['word_emb_file'] is None else cfg['data_folder'] + cfg['word_emb_file']
     entity_emb_file = None if cfg['entity_emb_file'] is None else cfg['data_folder'] + cfg['entity_emb_file']
     entity_kge_file = None if cfg['entity_kge_file'] is None else cfg['data_folder'] + cfg['entity_kge_file']
@@ -182,7 +178,7 @@ def get_model(trainable_entities, facts, entity2id, relation2id, cfg, num_kb_rel
     relation_kge_file = None if cfg['relation_kge_file'] is None else cfg['data_folder'] + cfg['relation_kge_file']
 
     my_model = use_cuda(GraftNet(trainable_entities, word_emb_file, entity_emb_file, entity_kge_file, relation_emb_file, relation_kge_file,
-                                 cfg['num_layer'], num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
+                                 num_layer, num_kb_relation, num_entities, num_vocab, cfg['entity_dim'],
                                  cfg['word_dim'], cfg['kge_dim'], cfg['pagerank_lambda'], cfg['fact_scale'],
                                  cfg['lstm_dropout'], cfg['linear_dropout'], cfg['use_kb'], cfg['use_doc']))
 
@@ -239,6 +235,6 @@ if __name__ == "__main__":
     elif '--test' == sys.argv[1]:
         train(CFG, is_test=True)
     elif '--prediction' == sys.argv[1]:
-        prediction(CFG, 3)
+        prediction(CFG, 1)
     else:
         assert False, "--train or --test?"
