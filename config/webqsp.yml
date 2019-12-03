@@ -10,16 +10,16 @@ test_documents: 'documents.json'
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
 entity2id: 'entities.txt'
-word_emb_file: "glove_pretrained_300d_w2v.npy"
-entity_emb_file: #"entity_emb_100d.npy"
-entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: #"relation_emb_100d.npy"
-relation_kge_file: #"relation_kge_100d.npy"
+word_emb_file: "word_emb_100d.npy"
+entity_emb_file: "entity_emb_100d.npy"
+entity_kge_file: "entity_kge_100d.npy"
+relation_emb_file: "relation_emb_100d.npy"
+relation_kge_file: "relation_kge_100d.npy"
 
 to_save_model: True
-save_model_file: "model/webqsp/best_model_hybrid1"
+save_model_file: "model/webqsp/best_model_hybrid_new_%d"
 pred_file: "model/webqsp/pred_hybrid"
-load_model_file: #"model/webqsp/best_model_hybrid"
+load_model_file: "model/webqsp/best_model_hybrid_new_%d"
 
 # graph options
 fact_dropout: 0.1
@@ -38,8 +38,8 @@ fact_scale: 3
 use_inverse_relation: False
 
 # optimization
-num_epoch: 100
-batch_size: 10
+num_epoch: 65
+batch_size: 16
 gradient_clip: 1
 learning_rate: 0.001
 lstm_dropout: 0.3

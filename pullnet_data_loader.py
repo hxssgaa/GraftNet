@@ -10,12 +10,13 @@ from tqdm import tqdm
 
 
 class DataLoader():
-    def __init__(self, questions, facts, iteration_t, documents, document_entity_indices, document_texts, word2id, relation2id, entity2id,
+    def __init__(self, questions, facts, iteration_t, max_iteration, documents, document_entity_indices, document_texts, word2id, relation2id, entity2id,
                  max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation):
         self.use_kb = use_kb
         self.use_doc = use_doc
         self.use_inverse_relation = use_inverse_relation
         self.iteration_t = iteration_t
+        self.max_iteration = max_iteration
         self.max_local_entity = 0
         self.max_relevant_doc = 0
         self.max_facts = 0
@@ -153,7 +154,9 @@ class DataLoader():
             # relations in local KB
             if self.use_kb:
                 for i, tpl in enumerate(sample['subgraph']['tuples']):
-                    sbj, rel, obj = tpl
+                    sbj, rel, obj = tuple(map(lambda x: x['text'] if isinstance(x, dict) else x, tpl))
+                    sbj = sbj.strip()
+                    obj = obj.strip()
                     if sbj not in self.entity2id or obj not in self.entity2id or rel not in self.relation2id:
                         continue
                     if not self.use_inverse_relation:
@@ -172,6 +175,8 @@ class DataLoader():
 
             # build connection between question and entities in it
             for j, entity in enumerate(sample['entities']):
+                if isinstance(entity, dict):
+                    entity = entity['text']
                 if entity not in self.entity2id:
                     continue
                 self.q2e_adj_mats[next_id, g2l[self.entity2id[entity]], 0] = 1.0
@@ -203,12 +208,25 @@ class DataLoader():
                     self.rel_document_ids[next_id, pid] = passage['document_id']
 
             # construct distribution for answers
-            for path in sample['path']:
-                if len(path) % 2 == 0:
-                    continue
-                for e in path[self.iteration_t * 2 if (self.iteration_t * 2 < len(path)) else -1]:
-                    if e in self.entity2id and self.entity2id[e] in g2l:
-                        self.answer_dists[next_id, g2l[self.entity2id[e]]] = 1.0
+
+            if self.iteration_t == self.max_iteration:
+                for answer in sample['answers']:
+                    keyword = 'text'
+                    if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
+                        self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
+            else:
+                if 'path' in sample and sample['path']:
+                   for e in sample['path']['%d' % (self.iteration_t if self.iteration_t < len(sample['path']) else len(sample['path']) - 1)]:
+                       if e in self.entity2id and self.entity2id[e] in g2l:
+                           self.answer_dists[next_id, g2l[self.entity2id[e]]] = 1.0
+
+            # TODO: support complexQA and QASP
+            # for path in sample['path']:
+            #     if len(path) % 2 == 0:
+            #         continue
+            #     for e in path[self.iteration_t * 2 if (self.iteration_t * 2 < len(path)) else -1]:
+            #         if e in self.entity2id and self.entity2id[e] in g2l:
+            #             self.answer_dists[next_id, g2l[self.entity2id[e]]] = 1.0
 
             self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int),
                                          np.array([1.0] * len(entity2fact_f))), (
@@ -335,9 +353,9 @@ class DataLoader():
     def _add_entity_to_map(entity2id, entities, g2l):
         for entity in entities:
             if isinstance(entity, dict):
-                entity_text = entity['text']
+                entity_text = entity['text'].strip()
             else:
-                entity_text = entity
+                entity_text = entity.strip()
             if entity_text not in entity2id:
                 continue
             entity_global_id = entity2id[entity_text]

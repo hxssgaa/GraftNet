@@ -256,7 +256,7 @@ def _convert_to_readable(tuples, inv_map):
         ])
     return readable_tuples
 
-facts = load_json('datasets/complexwebq/all_facts.json')
+# facts = load_json('datasets/complexwebq/all_facts.json')
 
 def m1(q_embs, r_embs, rel_indexer, qs):
     avg_recall = 0

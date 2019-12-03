@@ -3,41 +3,54 @@ import sys
 from pullnet_data_loader import DataLoader
 from util import *
 from graftnet import GraftNet
+from preprocessing.process_webqsp import generate_pullnet_input
 
-FACT_FILE = 'datasets/complexwebq/all_facts.json'
-QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop1.json'
-OUT_PREDICTION_QUESTION_FILE = 'datasets/complexwebq/questions/all_questions_v3_hop%d.json'
-RAW_QUESTION_IDS = {
-    'train': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_train.json'))),
-    'dev': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_dev.json'))),
-    'test': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_test.json'))),
-}
+HOP = 3
+QUESTION_FILE = 'datasets/metaqa/%dhop/all_questions.json' % HOP
+OUT_INPUT_QUESTION_FILE = 'datasets/metaqa/' + str(HOP) + 'hop/all_questions_hop%d_input_v2.json'
+OUT_PREDICTION_QUESTION_FILE = 'datasets/metaqa/' + str(HOP) +'hop/all_questions_out_hop%d.json'
+# RAW_QUESTION_IDS = {
+#     'train': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_train.json'))),
+#     'dev': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_dev.json'))),
+#     'test': set(map(lambda x: x['ID'], load_json('datasets/complexwebq/questions/ComplexWebQuestions_test.json'))),
+# }
+
+import warnings
+warnings.filterwarnings("ignore")
 
 
-def train(cfg, is_test=False):
-    T = 1
-    questions = load_json(QUESTION_FILE)
+def train(cfg, is_test=False, from_hop=1):
+    T = 3
     facts = None
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
 
-    train_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['train']]
-    dev_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['dev']]
-    test_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['test']]
+    # if t == 1:
+    #     for q in questions:
+    #         if 'subgraph' in q:
+    #             del q['subgraph']
+    #questions = generate_pullnet_input(questions, relation2id, OUT_INPUT_QUESTION_FILE % t, use_f=True)
+    t = 2
+    questions = load_json(OUT_INPUT_QUESTION_FILE % t)
+    questions = [q for q in questions if 'subgraph' in q]
+    train_questions = [q for q in questions if q['type'] == 'train']
+    dev_questions = [q for q in questions if q['type'] == 'dev']
+    test_questions = [q for q in questions if q['type'] == 'test']
     trainable_entities = set()
     for q in train_questions:
-        for t in q['subgraph']['tuples']:
-            s, p, o = t
-            trainable_entities.add(entity2id[s])
-            trainable_entities.add(entity2id[o])
+        for tup in q['subgraph']['tuples']:
+            s, p, o = tuple(map(lambda x: x['text'] if isinstance(x, dict) else x, tup))
+            s = s.replace('%', '')
+            o = o.replace('%', '')
+            trainable_entities.add(entity2id[s.strip()])
+            trainable_entities.add(entity2id[o.strip()])
 
-    t = 1
     train_documents, train_document_entity_indices, train_document_texts = None, None, None
-    train_data = DataLoader(train_questions, facts, t, train_documents, train_document_entity_indices, train_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
+    train_data = DataLoader(train_questions, facts, t, T, train_documents, train_document_entity_indices, train_document_texts, word2id, relation2id, entity2id, cfg['max_query_word'], cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
     dev_documents, dev_document_entity_indices, dev_document_texts = None, None, None
-    valid_data = DataLoader(dev_questions, facts, t, dev_documents, dev_document_entity_indices, dev_document_texts,
+    valid_data = DataLoader(test_questions, facts, t, T, dev_documents, dev_document_entity_indices, dev_document_texts,
                             word2id, relation2id, entity2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
@@ -47,7 +60,7 @@ def train(cfg, is_test=False):
     #                         cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
     # create model & set parameters
-    my_model = get_model(trainable_entities, facts, entity2id, relation2id, cfg, train_data.num_kb_relation, len(entity2id),
+    my_model = get_model(trainable_entities, t-1, facts, entity2id, relation2id, cfg, train_data.num_kb_relation, len(entity2id),
                          len(word2id), 3)
 
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
@@ -89,8 +102,8 @@ def train(cfg, is_test=False):
                 print("validating ...")
                 eval_acc = inference(my_model, valid_data, entity2id, cfg)
                 if eval_acc > best_dev_acc and cfg['to_save_model']:
-                    print("saving model to", cfg['save_model_file'])
-                    torch.save(my_model.state_dict(), cfg['save_model_file'])
+                    print("saving model to", cfg['save_model_file'] % t)
+                    torch.save(my_model.state_dict(), cfg['save_model_file'] % t)
                     best_dev_acc = eval_acc
 
         except KeyboardInterrupt:
@@ -100,7 +113,6 @@ def train(cfg, is_test=False):
 def test(cfg):
     T = 3
     questions = load_json(QUESTION_FILE)
-    facts = load_json(FACT_FILE)
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
@@ -118,25 +130,24 @@ def test(cfg):
     test_acc = inference(my_model, test_data, entity2id, cfg, log_info=True)
 
 
-def prediction(cfg, t):
-    questions = load_json(QUESTION_FILE)
-
-    test_questions = [q for q in questions if q['ID'] in RAW_QUESTION_IDS['test']]
+def prediction(cfg, t, T, questions):
     facts = None
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
 
+    test_questions = [e for e in questions if e['type'] == 'test']
+
     trainable_entities = set()
 
     documents, document_entity_indices, document_texts = None, None, None
-    data = DataLoader(test_questions, facts, t, documents, document_entity_indices,
+    data = DataLoader(questions, facts, t, T, documents, document_entity_indices,
                             document_texts, word2id, relation2id, entity2id, cfg['max_query_word'],
                             cfg['max_document_word'], cfg['use_kb'], cfg['use_doc'], cfg['use_inverse_relation'])
 
 
     # create model & set parameters
-    my_model = get_model(trainable_entities, facts, entity2id, relation2id, cfg, data.num_kb_relation,
+    my_model = get_model(trainable_entities, t, facts, entity2id, relation2id, cfg, data.num_kb_relation,
                          len(entity2id),
                          len(word2id), 3)
     # Evaluation
@@ -166,11 +177,11 @@ def prediction(cfg, t):
     print('avg_precision', sum(eval_precision) / len(eval_precision))
     print('avg_recall', sum(eval_recall) / len(eval_recall))
     print('avg_f1', sum(eval_f1) / len(eval_f1))
+    #save_json(questions, OUT_PREDICTION_QUESTION_FILE % t)
+    return questions
 
-    # save_json(questions, OUT_PREDICTION_QUESTION_FILE % t)
 
-
-def get_model(trainable_entities, facts, entity2id, relation2id, cfg, num_kb_relation, num_entities, num_vocab, num_layer):
+def get_model(trainable_entities, iteration_t, facts, entity2id, relation2id, cfg, num_kb_relation, num_entities, num_vocab, num_layer):
     word_emb_file = None if cfg['word_emb_file'] is None else cfg['data_folder'] + cfg['word_emb_file']
     entity_emb_file = None if cfg['entity_emb_file'] is None else cfg['data_folder'] + cfg['entity_emb_file']
     entity_kge_file = None if cfg['entity_kge_file'] is None else cfg['data_folder'] + cfg['entity_kge_file']
@@ -182,9 +193,9 @@ def get_model(trainable_entities, facts, entity2id, relation2id, cfg, num_kb_rel
                                  cfg['word_dim'], cfg['kge_dim'], cfg['pagerank_lambda'], cfg['fact_scale'],
                                  cfg['lstm_dropout'], cfg['linear_dropout'], cfg['use_kb'], cfg['use_doc']))
 
-    if cfg['load_model_file'] is not None:
-        print('loading model from', cfg['load_model_file'])
-        pretrained_model_states = torch.load(cfg['load_model_file'])
+    if cfg['load_model_file'] is not None and os.path.exists(cfg['load_model_file'] % (iteration_t)):
+        print('loading model from', cfg['load_model_file'] % (iteration_t))
+        pretrained_model_states = torch.load(cfg['load_model_file'] % (iteration_t))
         if word_emb_file is not None:
             del pretrained_model_states['word_embedding.weight']
         if entity_emb_file is not None:
@@ -235,6 +246,7 @@ if __name__ == "__main__":
     elif '--test' == sys.argv[1]:
         train(CFG, is_test=True)
     elif '--prediction' == sys.argv[1]:
-        prediction(CFG, 1)
+        questions = load_json(OUT_INPUT_QUESTION_FILE % 1)
+        prediction(CFG, 1, 3, questions)
     else:
         assert False, "--train or --test?"

@@ -2,15 +2,14 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 import torch.nn as nn
-from util import use_cuda, read_padded
-from torch.sparse import mm as sparse_mm
+from util import use_cuda, sparse_bmm, read_padded
 
 VERY_SMALL_NUMBER = 1e-10
 VERY_NEG_NUMBER = -100000000000
 
 
-def sparse_bmm(a, b):
-    return torch.stack([sparse_mm(ai, bi) for ai, bi in zip(a, b)])
+# def sparse_bmm(a, b):
+#     return torch.stack([sparse_mm(ai, bi) for ai, bi in zip(a, b)])
 
 
 class GraftNet(nn.Module):
@@ -36,8 +35,8 @@ class GraftNet(nn.Module):
         self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim, padding_idx=num_entity)
         if pretrained_entity_emb_file is not None:
             self.entity_embedding.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
-        self.entity_embedding.weight.requires_grad = False
-        self.entity_embedding.weight[list(trainable_entities), :].requires_grad = True
+            self.entity_embedding.weight.requires_grad = False
+        #self.entity_embedding.weight[list(trainable_entities), :].requires_grad = True
         if pretrained_entity_kge_file is not None:
             self.has_entity_kge = True
             self.entity_kge = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=kge_dim, padding_idx=num_entity)
@@ -122,28 +121,21 @@ class GraftNet(nn.Module):
         _, max_fact = kb_fact_rel.shape
 
         # numpy to tensor
-        with torch.no_grad():
-            local_entity = use_cuda(Variable(torch.from_numpy(local_entity).type('torch.LongTensor')))
-            query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor')))
-            query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
-            if self.use_kb:
-                kb_fact_rel = use_cuda(Variable(torch.from_numpy(kb_fact_rel).type('torch.LongTensor')))
-            if self.use_doc:
-                document_text = use_cuda(Variable(torch.from_numpy(document_text).type('torch.LongTensor')))
-            answer_dist = use_cuda(
-                Variable(torch.from_numpy(answer_dist).type('torch.FloatTensor')))
+        local_entity = use_cuda(Variable(torch.from_numpy(local_entity).type('torch.LongTensor'), requires_grad=False))
         local_entity_mask = use_cuda((local_entity != self.num_entity).type('torch.FloatTensor'))
+        if self.use_kb:
+            kb_fact_rel = use_cuda(Variable(torch.from_numpy(kb_fact_rel).type('torch.LongTensor'), requires_grad=False))
+        query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor'), requires_grad=False))
+        query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
         if self.use_doc:
+            document_text = use_cuda(Variable(torch.from_numpy(document_text).type('torch.LongTensor'), requires_grad=False))
             document_mask = use_cuda((document_text != self.num_word).type('torch.FloatTensor'))
+        answer_dist = use_cuda(Variable(torch.from_numpy(answer_dist).type('torch.FloatTensor'), requires_grad=False))
+
         # normalized adj matrix
-        pagerank_f = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor')).squeeze(dim=2)) # batch_size, max_local_entity
-        pagerank_f.requires_grad=True
-        with torch.no_grad():
-            pagerank_d = use_cuda(
-                Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'))).squeeze(
-                dim=2)  # batch_size, max_local_entity
-            q2e_adj_mat = use_cuda(
-                Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor')))  # batch_size, max_local_entity, 1
+        pagerank_f = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=True)).squeeze(dim=2) # batch_size, max_local_entity
+        pagerank_d = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=False)).squeeze(dim=2) # batch_size, max_local_entity
+        q2e_adj_mat = use_cuda(Variable(torch.from_numpy(q2e_adj_mat).type('torch.FloatTensor'), requires_grad=False)) # batch_size, max_local_entity, 1
         assert pagerank_f.requires_grad == True
         assert pagerank_d.requires_grad == False
 
@@ -151,6 +143,7 @@ class GraftNet(nn.Module):
         query_word_emb = self.word_embedding(query_text) # batch_size, max_query_word, word_dim
         query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb), self.init_hidden(1, batch_size, self.entity_dim)) # 1, batch_size, entity_dim
         query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1) # batch_size, 1, entity_dim
+
         query_rel_emb = query_node_emb # batch_size, 1, entity_dim
 
         if self.use_kb:
@@ -180,8 +173,7 @@ class GraftNet(nn.Module):
             W_tilde = torch.exp(W - W_max) # batch_size, max_fact
             e2f_softmax = sparse_bmm(entity2fact_mat.transpose(1, 2), W_tilde.unsqueeze(dim=2)).squeeze(dim=2) # batch_size, max_local_entity
             e2f_softmax = torch.clamp(e2f_softmax, min=VERY_SMALL_NUMBER)
-            with torch.no_grad():
-                e2f_out_dim = use_cuda(Variable(torch.sum(entity2fact_mat.to_dense(), dim=1))) # batch_size, max_local_entity
+            e2f_out_dim = use_cuda(Variable(torch.sum(entity2fact_mat.to_dense(), dim=1), requires_grad=False)) # batch_size, max_local_entity
 
         # build entity_pos matrix
         if self.use_doc:
@@ -190,16 +182,13 @@ class GraftNet(nn.Module):
             entity_pos_val = torch.FloatTensor(entity_pos_value)
             entity_pos_mat = use_cuda(torch.sparse.FloatTensor(entity_pos_index, entity_pos_val, torch.Size([batch_size, max_local_entity, max_relevant_doc * max_document_word]))) # batch_size, max_local_entity, max_relevant_doc * max_document_word
             d2e_adj_mat = torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3) # batch_size, max_local_entity, max_relevant_doc
-            with torch.no_grad():
-                d2e_adj_mat = use_cuda(Variable(d2e_adj_mat))
+            d2e_adj_mat = use_cuda(Variable(d2e_adj_mat, requires_grad=False))
             e2d_out_dim = torch.sum(torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3), dim=2, keepdim=True) # batch_size, max_local_entity, 1
-            with torch.no_grad():
-                e2d_out_dim = use_cuda(Variable(e2d_out_dim))
+            e2d_out_dim = use_cuda(Variable(e2d_out_dim, requires_grad=False))
             e2d_out_dim = torch.clamp(e2d_out_dim,  min=VERY_SMALL_NUMBER)
             
             d2e_out_dim = torch.sum(torch.sum(entity_pos_mat.to_dense().view(batch_size, max_local_entity, max_relevant_doc, max_document_word), dim=3), dim=1, keepdim=True) # batch_size, 1, max_relevant_doc
-            with torch.no_grad():
-                d2e_out_dim = use_cuda(Variable(d2e_out_dim))
+            d2e_out_dim = use_cuda(Variable(d2e_out_dim, requires_grad=False))
             d2e_out_dim = torch.clamp(d2e_out_dim,  min=VERY_SMALL_NUMBER).transpose(1,2)
 
             # encode document
