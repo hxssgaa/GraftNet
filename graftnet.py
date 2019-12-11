@@ -2,15 +2,15 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 import torch.nn as nn
-from util import use_cuda, read_padded
-from torch.sparse import mm as sparse_mm
+from util import use_cuda, read_padded, sparse_bmm
+#from torch.sparse import mm as sparse_mm
 
 VERY_SMALL_NUMBER = 1e-10
 VERY_NEG_NUMBER = -100000000000
 
 
-def sparse_bmm(a, b):
-    return torch.stack([sparse_mm(ai, bi) for ai, bi in zip(a, b)])
+# def sparse_bmm(a, b):
+#     return torch.stack([sparse_mm(ai, bi) for ai, bi in zip(a, b)])
 
 
 class GraftNet(nn.Module):
@@ -33,16 +33,21 @@ class GraftNet(nn.Module):
         self.use_doc = use_doc
 
         # initialize entity embedding
-        self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim, padding_idx=num_entity)
+        self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim,
+                                             padding_idx=num_entity)
         if pretrained_entity_emb_file is not None:
-            self.entity_embedding.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
+            self.entity_embedding.weight = nn.Parameter(
+                torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type(
+                    'torch.FloatTensor'))
             self.entity_embedding.weight.requires_grad = False
         if pretrained_entity_kge_file is not None:
             self.has_entity_kge = True
             self.entity_kge = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=kge_dim, padding_idx=num_entity)
-            self.entity_kge.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_entity_kge_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
+            self.entity_kge.weight = nn.Parameter(
+                torch.from_numpy(np.pad(np.load(pretrained_entity_kge_file), ((0, 1), (0, 0)), 'constant')).type(
+                    'torch.FloatTensor'))
             self.entity_kge.weight.requires_grad = False
-        
+
         if self.has_entity_kge:
             self.entity_linear = nn.Linear(in_features=word_dim + kge_dim, out_features=entity_dim)
         else:
@@ -119,7 +124,9 @@ class GraftNet(nn.Module):
         :entity_pos: sparse entity_pos_mat                          (batch_size, max_local_entity, max_relevant_doc * max_document_word) 
         :answer_dist: an distribution over local_entity             (batch_size, max_local_entity)
         """
-        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, query_text, document_text, entity_pos, answer_dist = batch
+        local_entity, q2e_adj_mat, kb_adj_mat, kb_fact_rel, query_text, answer_dist = batch
+        document_text = None
+        entity_pos = None
 
         batch_size, max_local_entity = local_entity.shape
         _, max_relevant_doc, max_document_word = document_text.shape if self.use_doc else None, None, None
@@ -301,7 +308,7 @@ class GraftNet(nn.Module):
 
         score = score + (1 - local_entity_mask) * VERY_NEG_NUMBER
         pred_dist = self.sigmoid(score) * local_entity_mask
-        pred = torch.topk(score, 7, dim=1)[1]
+        pred = torch.topk(score, 6, dim=1)[1]
 
         return loss, pred, pred_dist
 

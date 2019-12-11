@@ -273,5 +273,51 @@ def load_json(file):
     return data
 
 
+def load_fact(file):
+    kb = dict()
+    with open(file) as f:
+        for line in f.readlines():
+            line = line.strip()
+            triple = line.split('|')
+            triple = list(map(str.strip, triple))
+            s, p, o = triple
+            s = s.replace('%', '')
+            o = o.replace('%', '')
+            if s not in kb:
+                kb[s] = dict()
+            if p not in kb[s]:
+                kb[s][p] = dict()
+            if o not in kb[s][p]:
+                kb[s][p][o] = 0
+            if o not in kb:
+                kb[o] = dict()
+            if p not in kb[o]:
+                kb[o][p] = dict()
+            if s not in kb[o][p]:
+                kb[o][p][s] = 1
+    return kb
+
+
+def load_fact2(file):
+    kb = dict()
+    with open(file) as f:
+        for line in f.readlines():
+            line = line.strip()
+            triple = line.split('|')
+            triple = list(map(str.strip, triple))
+            s, p, o = triple
+            s = s.replace('%', '')
+            o = o.replace('%', '')
+            if s not in kb:
+                kb[s] = dict()
+            if o not in kb[s]:
+                kb[s][o] = [p, 0]
+            if o not in kb:
+                kb[o] = dict()
+            if s not in kb[o]:
+                kb[o][s] = [p, 1]
+    return kb
+
+
 if __name__  == "__main__":
     load_documents('datasets/wikimovie/full_doc/documents.json')

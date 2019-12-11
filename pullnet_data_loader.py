@@ -1,11 +1,13 @@
 import numpy as np
+import json
 from tqdm import tqdm
 
 from preprocessing.process_complex_webq import clean_text
+from util import load_json
 
 
 class DataLoader():
-    def __init__(self, questions, documents, document_entity_indices, document_texts, word2id,
+    def __init__(self, data_file, documents, document_entity_indices, document_texts, word2id,
                  relation2id, max_query_word, max_document_word, use_kb, use_doc, use_inverse_relation):
         self.use_kb = use_kb
         self.use_doc = use_doc
@@ -25,8 +27,12 @@ class DataLoader():
 
         self.data = []
 
-        for q in tqdm(questions):
-            self.data.append(q)
+        print('loading data from', data_file)
+        self.data = []
+        f_in = load_json(data_file)
+        f_in = f_in[:len(f_in) // 10]
+        for line in tqdm(f_in):
+            self.data.append(line)
         self.data = np.array(self.data)
         self.num_data = len(self.data)
         self.batches = np.arange(self.num_data)
