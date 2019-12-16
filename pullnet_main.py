@@ -6,7 +6,9 @@ from graftnet import GraftNet
 from pullnet_data_loader import DataLoader
 from fpnet_data_loader import FpNetDataLoader
 from relreasoner import RelReasoner
+from relreasoner_order import RelOrderReasoner
 from relreasoner_data_loader import RelReasonerDataLoader
+from rel_order_reasoner_data_loader import RelOrderReasonerDataLoader
 from fpnet import FactsPullNet
 from util import *
 
@@ -169,21 +171,74 @@ def train_pullfacts(cfg):
             break
 
 
-def inference_relreasoner(my_model, data, entity2id, cfg, log_info=False):
+def inference_answer_helper(entity, pred_path, facts, visited):
+    if not pred_path:
+        return {entity}
+    if entity in visited or entity not in facts or pred_path[0] not in facts[entity]:
+        return set()
+    visited.add(entity)
+    res = set()
+    for neighbor in facts[entity][pred_path[0]]:
+        res |= inference_answer_helper(neighbor, pred_path[1:], facts, visited)
+    return res
+
+
+def inference_answer(facts, questions):
+    avg_hit_at_one = 0.0
+    avg_recall = 0.0
+    avg_f1 = 0.0
+    for q in tqdm(questions):
+        entity = q['entities'][0]['text']
+        entity = entity.replace('%', '')
+        pred_path = q['pred_rel_path']
+        inference_answers = set(inference_answer_helper(entity, pred_path, facts, set()))
+        actual_answers = set(map(lambda x: x['text'], q['answers']))
+        avg_hit_at_one += (1 if len(inference_answers & actual_answers) > 0 else 0)
+        precision = 0
+        for pred_ans in inference_answers:
+            if pred_ans in actual_answers:
+                precision += 1
+        precision = float(precision) / len(inference_answers)
+        recall = 0
+        for act_ans in actual_answers:
+            if act_ans in inference_answers:
+                recall += 1
+        recall = float(recall) / len(actual_answers) if len(actual_answers) > 0 else 0
+        f1 = 0
+        if precision + recall > 0:
+            f1 = 2 * recall * precision / (precision + recall)
+        avg_recall += recall
+        avg_f1 += f1
+    return avg_hit_at_one / len(questions), avg_recall / len(questions), avg_f1 / len(questions)
+
+
+def inference_relreasoner(my_model, test_batch_size, data, entity2id, reverse_relation2id, cfg, is_train=True, is_order=False, log_info=False):
     # Evaluation
     my_model.eval()
     my_model.teacher_force = False
     eval_hit_at_one, eval_loss, eval_recall, eval_max_acc = [], [], [], []
     id2entity = {idx: entity for entity, idx in entity2id.items()}
     data.reset_batches(is_sequential = True)
-    test_batch_size = 20
     if log_info:
         f_pred = open(cfg['pred_file'], 'w')
     for iteration in tqdm(range(data.num_data // test_batch_size)):
         batch = data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
         loss, pred, _ = my_model(batch)
         pred = pred.data.cpu().numpy()
-        local_kb_rel_path_rels = data.local_kb_rel_path_rels[iteration * test_batch_size: (iteration + 1) * test_batch_size]
+        if not is_train and not is_order:
+            for row in range(pred.shape[0]):
+                relations = []
+                for col in range(pred.shape[1]):
+                    relations.append(reverse_relation2id[pred[row][col]])
+                data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
+        if not is_train and is_order:
+            for row in range(pred.shape[0]):
+                max_pred = pred[row][0]
+                pred_path = data.local_kb_rel_path_rels[iteration * test_batch_size + row][max_pred]
+                relations = []
+                for rel_id in pred_path:
+                    relations.append(reverse_relation2id[rel_id])
+                data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
         hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1])
         eval_hit_at_one.append(hit_at_one)
         eval_loss.append(loss.item())
@@ -198,20 +253,29 @@ def inference_relreasoner(my_model, data, entity2id, cfg, log_info=False):
     return sum(eval_recall) / len(eval_recall)
 
 
-def train_relreasoner(cfg):
+def train_relreasoner(cfg, is_order=False):
     facts = load_fact2(cfg['fact_data'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
+    reverse_relation2id = {v: k for k, v in relation2id.items()}
     num_hop = 3
 
-    train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop,
-                                       word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
+    if not is_order:
+        train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop,
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
-    valid_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, num_hop,
-                                       word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
+        valid_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, num_hop,
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
+    else:
+        max_relation = 2
+        train_data = RelOrderReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop, max_relation,
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
-    my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, len(entity2id), len(word2id))
+        valid_data = RelOrderReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, num_hop, max_relation,
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
+
+    my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, len(entity2id), len(word2id), is_order=is_order)
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(trainable_parameters, lr=1e-4)
 
@@ -245,11 +309,17 @@ def train_relreasoner(cfg):
             print('avg_training_recall', sum(train_recall) / len(train_recall))
 
             print("validating ...")
-            eval_recall = inference_relreasoner(my_model, valid_data, entity2id, cfg)
-            if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
-                print("saving model to", cfg['save_fpnet_model_file'])
-                torch.save(my_model.state_dict(), cfg['save_fpnet_model_file'])
-                best_dev_recall = eval_recall
+            eval_recall = inference_relreasoner(my_model, 20, valid_data, entity2id, reverse_relation2id, cfg, is_order)
+            if not is_order:
+                if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
+                    print("saving model to", cfg['save_fpnet_model_file'])
+                    torch.save(my_model.state_dict(), cfg['save_fpnet_model_file'])
+                    best_dev_recall = eval_recall
+            else:
+                if eval_recall > best_dev_recall and cfg['save_rel_order_model_file']:
+                    print("saving model to", cfg['save_rel_order_model_file'])
+                    torch.save(my_model.state_dict(), cfg['save_rel_order_model_file'])
+                    best_dev_recall = eval_recall
 
         except KeyboardInterrupt:
             break
@@ -257,24 +327,38 @@ def train_relreasoner(cfg):
 
 def prediction_relreasoner(cfg):
     facts = load_fact2(cfg['fact_data'])
+    facts_rel = load_fact(cfg['fact_data'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
+    reverse_relation2id = {v: k for k, v in relation2id.items()}
     num_hop = 3
+    max_relation = 2
 
     # train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop,
     #                                    word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
-
-    # valid_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, num_hop,
+    #
+    # valid_data = RelOrderReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, num_hop, max_relation,
     #                                    word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
     test_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, num_hop,
-                                       word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
+                                      word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
     my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
 
-    eval_recall = inference_relreasoner(my_model, test_data, entity2id, cfg)
+    eval_recall = inference_relreasoner(my_model, 26, test_data, entity2id, reverse_relation2id, cfg, is_train=False)
 
+    test_data = RelOrderReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, num_hop, max_relation,
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1,
+                                           pred_data=test_data.data)
+    my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id), is_order=True)
+
+    eval_recall = inference_relreasoner(my_model, 26, test_data, entity2id, reverse_relation2id, cfg, is_order=True, is_train=False)
+
+    eval_hit_at_one, eval_recall, eval_f1 = inference_answer(facts_rel, test_data.data)
+    print('testing eval hit@1:', eval_hit_at_one)
+    print('testing recall:', eval_recall)
+    print('testing f1:', eval_f1)
 
 
 def test(cfg):
@@ -305,20 +389,31 @@ def get_model(facts, entity2id, relation2id, cfg, num_kb_relation, num_entities,
     return my_model
 
 
-def get_relreasoner_model(cfg, num_hop, num_kb_relation, num_entities, num_vocab):
+def get_relreasoner_model(cfg, num_hop, num_kb_relation, num_entities, num_vocab, is_order=False):
     word_emb_file = None if cfg['word_emb_file'] is None else cfg['data_folder'] + cfg['word_emb_file']
     relation_emb_file = None if cfg['relation_emb_file'] is None else cfg['data_folder'] + cfg['relation_emb_file']
 
-    my_model = use_cuda(RelReasoner(word_emb_file, relation_emb_file,
-                                     num_kb_relation, num_entities, num_vocab, num_hop, cfg['entity_dim'],
-                                     cfg['word_dim'], cfg['lstm_dropout'], cfg['use_inverse_relation']))
+    if not is_order:
+        my_model = use_cuda(RelReasoner(word_emb_file, relation_emb_file,
+                                         num_kb_relation, num_entities, num_vocab, num_hop, cfg['entity_dim'],
+                                         cfg['word_dim'], cfg['lstm_dropout'], cfg['use_inverse_relation']))
+        if cfg['load_fpnet_model_file'] is not None:
+            print('loading model from', cfg['load_fpnet_model_file'])
+            pretrained_model_states = torch.load(cfg['load_fpnet_model_file'])
+            if word_emb_file is not None:
+                del pretrained_model_states['word_embedding.weight']
+            my_model.load_state_dict(pretrained_model_states, strict=False)
+    else:
+        my_model = use_cuda(RelOrderReasoner(word_emb_file, relation_emb_file,
+                                        num_kb_relation, num_entities, num_vocab, num_hop, cfg['entity_dim'],
+                                        cfg['word_dim'], cfg['lstm_dropout'], cfg['use_inverse_relation']))
+        if 'load_rel_order_model_file' in cfg and cfg['load_rel_order_model_file'] is not None:
+            print('loading model from', cfg['load_rel_order_model_file'])
+            pretrained_model_states = torch.load(cfg['load_rel_order_model_file'])
+            if word_emb_file is not None:
+                del pretrained_model_states['word_embedding.weight']
+            my_model.load_state_dict(pretrained_model_states, strict=False)
 
-    if cfg['load_fpnet_model_file'] is not None:
-        print('loading model from', cfg['load_fpnet_model_file'])
-        pretrained_model_states = torch.load(cfg['load_fpnet_model_file'])
-        if word_emb_file is not None:
-            del pretrained_model_states['word_embedding.weight']
-        my_model.load_state_dict(pretrained_model_states, strict=False)
 
     return my_model
 
@@ -372,7 +467,7 @@ def inference(my_model, valid_data, entity2id, cfg, log_info=False):
     eval_loss, eval_hit_at_one, eval_precision, eval_recall, eval_f1, eval_max_acc, eval_facts_recall = [], [], [], [], [], [], []
     id2entity = {idx: entity for entity, idx in entity2id.items()}
     valid_data.reset_batches(is_sequential = True)
-    test_batch_size = 20
+    test_batch_size = 26
     if log_info:
         f_pred = open(cfg['pred_file'], 'w')
     for iteration in tqdm(range(valid_data.num_data // test_batch_size)):
@@ -458,6 +553,8 @@ if __name__ == "__main__":
         train_pullfacts(CFG)
     elif '--train-relreasoner' == sys.argv[1]:
         train_relreasoner(CFG)
+    elif '--train-relreasoner-order' == sys.argv[1]:
+        train_relreasoner(CFG, True)
     elif '--prediction-relreasoner' == sys.argv[1]:
         prediction_relreasoner(CFG)
     else:
