@@ -65,6 +65,8 @@ class RelReasonerDataLoader():
                     else:
                         self.relation_texts[idx_rel, j] = self.word2id['__unk__']
 
+        question_word_list = 'who, when, what, where, how, which, why, whom, whose'.split(', ')
+        stop_words = set(stopwords.words("english"))
         for idx_q, sample in tqdm(enumerate(self.data)):
             # build answers
             rel_ids = set()
@@ -83,8 +85,6 @@ class RelReasonerDataLoader():
             #     for hop in range(self.num_hop):
             #         self.local_kb_rel_path_rels[idx_q][i][hop] = rel_cand[hop]
 
-            question_word_list = 'who, when, what, where, how, which, why, whom, whose'.split(', ')
-            stop_words = set(stopwords.words("english"))
             stop_words.update(question_word_list)
 
             # tokenize question
