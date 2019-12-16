@@ -1,52 +1,48 @@
+import itertools
+
 import numpy as np
 from tqdm import tqdm
 from util import load_json
 from preprocessing.process_complex_webq import clean_text
 from collections import defaultdict
+from nltk.corpus import stopwords
 
 
 MAX_FACTS = 500
 
 
-class FpNetDataLoader():
-    def __init__(self, data_file, facts, entity2id, word2id, relation2id, max_query_word, use_inverse_relation, teacher_force=False):
+class RelReasonerDataLoader():
+    def __init__(self, data_file, facts, num_hop, word2id, relation2id, max_query_word, use_inverse_relation, div, teacher_force=False):
         self.use_inverse_relation = use_inverse_relation
         self.max_local_entity = 0
         self.max_facts = 0
         self.max_query_word = max_query_word
         self.facts = facts
-        if self.use_inverse_relation:
-            self.num_kb_relation = 2 * len(relation2id)
-        else:
-            self.num_kb_relation = len(relation2id)
+        self.num_kb_relation = len(relation2id)
         self.teacher_force = teacher_force
+        self.num_hop = num_hop
 
         self.data = []
 
         print('loading data from', data_file)
-        self.data = self.build_fpnet_data(data_file)
+        f_in = load_json(data_file)
+        f_in = f_in[:len(f_in)//div]
+        for line in tqdm(f_in):
+            self.data.append(line)
+        print('div', div, len(self.data))
         self.num_data = len(self.data)
+
         self.batches = np.arange(self.num_data)
 
         print('building word index ...')
         self.word2id = word2id
         self.relation2id = relation2id
-        self.entity2id = entity2id
 
         print('preparing data ...')
+        self.local_kb_rel_path_rels = np.zeros((self.num_data, self.num_kb_relation))
+        self.relation_texts = np.full((len(self.relation2id), self.max_query_word), len(self.word2id), dtype=int)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-
-        print('converting global to local entity index ...')
-        self.global2local_entity_maps = self._build_global2local_entity_maps()
-        print('max_local_entity', self.max_local_entity)
-
-        print('preparing data ...')
-        self.local_entities = np.full((self.num_data, self.max_local_entity), len(self.entity2id), dtype=int)
-        self.kb_adj_mats = np.empty(self.num_data, dtype=object)
-        self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)
-        self.q2e_adj_mats = np.zeros((self.num_data, self.max_local_entity, 1), dtype=float)
-        self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-        self.answer_dists = np.zeros((self.num_data, self.max_facts), dtype=float)
+        self.answer_dists = np.zeros((self.num_data, self.num_kb_relation), dtype=float)
 
         self._prepare_data()
 
@@ -57,45 +53,46 @@ class FpNetDataLoader():
         """
         next_id = 0
         count_query_length = [0] * 50
-        total_num_answerable_question = 0
         cache_question = {}
-        for sample in tqdm(self.data[:len(self.data)]):
-            # get a list of local entities
-            g2l = self.global2local_entity_maps[next_id]
-            for global_entity, local_entity in g2l.items():
-                if local_entity != 0:  # skip question node
-                    self.local_entities[next_id, local_entity] = global_entity
 
-            entity2fact_e, entity2fact_f = [], []
-            fact2entity_f, fact2entity_e = [], []
+        for rel in self.relation2id:
+            idx_rel = self.relation2id[rel]
+            rel_word_spt = clean_text(rel)
+            for j, word in enumerate(rel_word_spt):
+                if j < self.max_query_word:
+                    if word in self.word2id:
+                        self.relation_texts[idx_rel, j] = self.word2id[word]
+                    else:
+                        self.relation_texts[idx_rel, j] = self.word2id['__unk__']
 
-            for i, tpl in enumerate(sample['subgraph']['tuples']):
-                sbj, rel, obj = tpl
-                if not self.use_inverse_relation:
-                    entity2fact_e += [g2l[self.entity2id[sbj]]]
-                    entity2fact_f += [i]
-                    fact2entity_f += [i]
-                    fact2entity_e += [g2l[self.entity2id[obj]]]
-                    self.kb_fact_rels[next_id, i] = self.relation2id[rel]
-                else:
-                    entity2fact_e += [g2l[self.entity2id[sbj]], g2l[self.entity2id[obj]]]
-                    entity2fact_f += [2 * i, 2 * i + 1]
-                    fact2entity_f += [2 * i, 2 * i + 1]
-                    fact2entity_e += [g2l[self.entity2id[obj]], g2l[self.entity2id[sbj]]]
-                    self.kb_fact_rels[next_id, 2 * i] = self.relation2id[rel]
-                    self.kb_fact_rels[next_id, 2 * i + 1] = self.relation2id[rel] + len(self.relation2id)
+        for idx_q, sample in tqdm(enumerate(self.data)):
+            # build answers
+            rel_ids = set()
+            for rel in sample['rel_path']:
+                rel_ids.add(self.relation2id[rel])
 
-            # build connection between question and entities in it
-            for j, entity in enumerate(sample['entities']):
-                if entity not in self.entity2id:
-                    continue
-                self.q2e_adj_mats[next_id, g2l[self.entity2id[entity]], 0] = 1.0
+            # get a list of relation candidate paths
+            for i in range(len(self.relation2id)):
+                self.local_kb_rel_path_rels[idx_q][i] = i
+                if i in rel_ids:
+                    self.answer_dists[idx_q][i] = 1.0
+            # for i in range(len(rel_cands)):
+            #     rel_cand = list(map(self.relation2id.get, rel_cands[i]))
+            #     if tuple(rel_cand) in rel_ids:
+            #         self.answer_dists[idx_q][i] = 1.0
+            #     for hop in range(self.num_hop):
+            #         self.local_kb_rel_path_rels[idx_q][i][hop] = rel_cand[hop]
+
+            question_word_list = 'who, when, what, where, how, which, why, whom, whose'.split(', ')
+            stop_words = set(stopwords.words("english"))
+            stop_words.update(question_word_list)
 
             # tokenize question
             if sample['question'] in cache_question:
                 question_word_spt = cache_question[sample['question']]
             else:
                 question_word_spt = clean_text(sample['question'])
+                question_word_spt = list(filter(lambda x: x not in stop_words, question_word_spt))
                 cache_question[sample['question']] = question_word_spt
             count_query_length[len(question_word_spt)] += 1
             for j, word in enumerate(question_word_spt):
@@ -104,26 +101,6 @@ class FpNetDataLoader():
                         self.query_texts[next_id, j] = self.word2id[word]
                     else:
                         self.query_texts[next_id, j] = self.word2id['__unk__']
-
-            # construct distribution for answers
-            answer_set = {answer['text'] if isinstance(answer, dict) else answer for answer in sample['answers']}
-            for i, tpl in enumerate(sample['subgraph']['tuples']):
-                sbj, rel, obj = tpl
-                if sbj in answer_set or obj in answer_set:
-                    self.answer_dists[next_id, i] = 1.0
-            # for answer in sample['answers']:
-            #     keyword = 'text'
-            #     if isinstance(answer, dict):
-            #         if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
-            #             self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
-            #     else:
-            #         if answer in self.entity2id and self.entity2id[answer] in g2l:
-            #             self.answer_dists[next_id, g2l[self.entity2id[answer]]] = 1.0
-
-            self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int),
-                                         np.array([1.0] * len(entity2fact_f))), (
-                                        np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int),
-                                        np.array([1.0] * len(fact2entity_e)))
 
             next_id += 1
 
@@ -162,7 +139,7 @@ class FpNetDataLoader():
 
         return {'entities': list(entities), 'tuples': list(tuples)}
 
-    def build_fpnet_data(self, data_file):
+    def build_relreasoner_data(self, data_file):
         res = []
         f_in = load_json(data_file)
         f_in = f_in[:len(f_in)]
@@ -265,9 +242,7 @@ class FpNetDataLoader():
         """
         sample_ids = self.batches[batch_size * iteration: batch_size * (iteration + 1)]
 
-        return self.local_entities[sample_ids], \
-               self.q2e_adj_mats[sample_ids], \
-               self._build_kb_adj_mat(sample_ids, fact_dropout=fact_dropout), \
-               self.kb_fact_rels[sample_ids], \
-               self.query_texts[sample_ids], \
+        return self.query_texts[sample_ids], \
+               self.relation_texts, \
+               self.local_kb_rel_path_rels[sample_ids], \
                self.answer_dists[sample_ids]

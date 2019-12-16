@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import random
 
-from localgraphclustering import GraphLocal, approximate_PageRank_weighted
+#from localgraphclustering import GraphLocal, approximate_PageRank_weighted
 from torch.autograd import Variable
 import torch.nn as nn
 from util import use_cuda, read_padded, sparse_bmm

@@ -92,24 +92,24 @@ class FactsPullNet(nn.Module):
         # calculating fact score
         div = float(np.sqrt(self.entity_dim))
 
-        fact2query_sim = torch.bmm(query_hidden_emb,
-                                   local_fact_emb.transpose(1, 2)) / div  # batch_size, max_query_word, max_fact
-        fact2query_sim = self.softmax_d1(fact2query_sim + (
-                    1 - query_mask.unsqueeze(dim=2)) * VERY_NEG_NUMBER)  # batch_size, max_query_word, max_fact
-        fact2query_att = torch.sum(fact2query_sim.unsqueeze(dim=3) * query_hidden_emb.unsqueeze(dim=2),
-                                   dim=1)  # batch_size, max_fact, entity_dim
-        local_fact_att_emb = fact2query_att * local_fact_emb
+        # fact2query_sim = torch.bmm(query_hidden_emb,
+        #                            local_fact_emb.transpose(1, 2)) / div  # batch_size, max_query_word, max_fact
+        # fact2query_sim = self.softmax_d1(fact2query_sim + (
+        #             1 - query_mask.unsqueeze(dim=2)) * VERY_NEG_NUMBER)  # batch_size, max_query_word, max_fact
+        # fact2query_att = torch.sum(fact2query_sim.unsqueeze(dim=3) * query_hidden_emb.unsqueeze(dim=2),
+        #                            dim=1)  # batch_size, max_fact, entity_dim
+        # local_fact_att_emb = fact2query_att * local_fact_emb
 
-        # fact_score = local_fact_emb @ query_node_emb / div
-        entity_score = sparse_bmm(fact2entity_mat, local_fact_att_emb).squeeze(2) / float(np.sqrt(kb_fact_rel.shape[1]))
+        fact_score = (local_fact_emb @ query_node_emb / div).squeeze(2)
+        # entity_score = sparse_bmm(fact2entity_mat, local_fact_att_emb).squeeze(2) / float(np.sqrt(kb_fact_rel.shape[1]))
 
-        loss = self.bce_loss(entity_score, answer_dist)
+        loss = self.bce_loss(fact_score, answer_dist)
 
-        entity_score = entity_score + (1 - local_entity_mask) * VERY_NEG_NUMBER
-        pred_dist = self.sigmoid(entity_score)* local_entity_mask
-        pred = torch.topk(entity_score, 6, dim=1)[1]
+        # entity_score = entity_score + (1 - local_entity_mask) * VERY_NEG_NUMBER
+        # pred_dist = self.sigmoid(entity_score)* local_entity_mask
+        pred = torch.topk(fact_score, 50, dim=1)[1]
 
-        return loss, pred, pred_dist
+        return loss, pred, None#pred, pred_dist
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
         return (use_cuda(Variable(torch.zeros(num_layer, batch_size, hidden_size))),

@@ -1,0 +1,190 @@
+loading data from datasets/metaqa/3hop/train_v2.json
+  0%|          | 0/114196 [00:00<?, ?it/s]div 1 114196
+building word index ...
+preparing data ...
+100%|██████████| 114196/114196 [00:00<00:00, 4477719.87it/s]
+114196it [00:11, 9945.94it/s]
+loading data from datasets/metaqa/3hop/dev_v2.json
+  0%|          | 0/14274 [00:00<?, ?it/s]div 1 14274
+building word index ...
+preparing data ...
+100%|██████████| 14274/14274 [00:00<00:00, 4556278.18it/s]
+14274it [00:01, 10019.69it/s]
+loaded relation_emb
+load word emb
+epoch 0
+100%|██████████| 1427/1427 [00:23<00:00, 61.52it/s]
+  0%|          | 0/713 [00:00<?, ?it/s]avg_hit_at_one 0.6970567624386812
+avg_training_loss 0.3200566587576769
+max_training_acc 1.0
+avg_training_recall 0.6409381569726694
+validating ...
+ 99%|█████████▊| 703/713 [00:01<00:00, 699.84it/s]avg_loss 0.1336413279572844
+max_acc 1.0
+avg_hit_at_one 0.9948807854137456
+avg_recall 0.9583099579242674
+saving model to model/wikimovie/best_relreasoner3
+100%|██████████| 713/713 [00:01<00:00, 697.61it/s]
+epoch 1
+100%|██████████| 1427/1427 [00:22<00:00, 62.87it/s]
+  0%|          | 0/713 [00:00<?, ?it/s]avg_hit_at_one 0.9997459705676244
+avg_training_loss 0.04816275706140099
+max_training_acc 1.0
+avg_training_recall 0.9949456902592858
+validating ...
+ 91%|█████████▏| 651/713 [00:00<00:00, 722.37it/s]avg_loss 0.01580997152308846
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9991935483870972
+saving model to model/wikimovie/best_relreasoner3
+100%|██████████| 713/713 [00:00<00:00, 717.23it/s]
+epoch 2
+100%|██████████| 1427/1427 [00:22<00:00, 63.51it/s]
+  0%|          | 0/713 [00:00<?, ?it/s]avg_hit_at_one 0.9999912403644008
+avg_training_loss 0.009522361835215525
+max_training_acc 1.0
+avg_training_recall 0.99917659425368
+validating ...
+ 91%|█████████ | 649/713 [00:00<00:00, 715.73it/s]avg_loss 0.005533626745879483
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9994039270687239
+saving model to model/wikimovie/best_relreasoner3
+100%|██████████| 713/713 [00:00<00:00, 716.63it/s]
+epoch 3
+100%|█████████▉| 1420/1427 [00:22<00:00, 61.12it/s]avg_hit_at_one 0.9999912403644008
+avg_training_loss 0.0037138057606211214
+max_training_acc 1.0
+avg_training_recall 0.9996189558514366
+validating ...
+100%|██████████| 1427/1427 [00:22<00:00, 62.16it/s]
+ 98%|█████████▊| 700/713 [00:01<00:00, 698.42it/s]avg_loss 0.002592636873817586
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9995792426367464
+saving model to model/wikimovie/best_relreasoner3
+epoch 4
+100%|██████████| 713/713 [00:01<00:00, 694.54it/s]
+100%|█████████▉| 1420/1427 [00:22<00:00, 61.38it/s]avg_hit_at_one 1.0
+avg_training_loss 0.0018084181518588911
+max_training_acc 1.0
+avg_training_recall 0.9997415907498254
+validating ...
+100%|██████████| 1427/1427 [00:22<00:00, 63.38it/s]
+100%|██████████| 713/713 [00:01<00:00, 698.47it/s]
+avg_loss 0.0015139689313562596
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996143057503508
+saving model to model/wikimovie/best_relreasoner3
+epoch 5
+100%|██████████| 1427/1427 [00:23<00:00, 61.48it/s]
+  0%|          | 0/713 [00:00<?, ?it/s]avg_hit_at_one 1.0
+avg_training_loss 0.001023006926546201
+max_training_acc 1.0
+avg_training_recall 0.9997766292922218
+validating ...
+100%|██████████| 713/713 [00:00<00:00, 717.92it/s]
+avg_loss 0.0010615894479920687
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996143057503507
+epoch 6
+100%|██████████| 1427/1427 [00:22<00:00, 62.53it/s]
+  0%|          | 0/713 [00:00<?, ?it/s]avg_hit_at_one 1.0
+avg_training_loss 0.0006853955439182576
+max_training_acc 1.0
+avg_training_recall 0.9997810091100215
+validating ...
+100%|██████████| 713/713 [00:01<00:00, 705.86it/s]
+avg_loss 0.0007540773598543861
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9997194950911642
+saving model to model/wikimovie/best_relreasoner3
+epoch 7
+100%|█████████▉| 1426/1427 [00:23<00:00, 60.99it/s]avg_hit_at_one 1.0
+avg_training_loss 0.00047754945274295263
+max_training_acc 1.0
+avg_training_recall 0.9997985283812201
+validating ...
+100%|██████████| 1427/1427 [00:23<00:00, 61.83it/s]
+ 98%|█████████▊| 701/713 [00:01<00:00, 692.58it/s]avg_loss 0.0006358062849754956
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9997194950911642
+epoch 8
+100%|██████████| 713/713 [00:01<00:00, 694.57it/s]
+100%|█████████▉| 1426/1427 [00:23<00:00, 63.50it/s]avg_hit_at_one 1.0
+avg_training_loss 0.0003869282722333805
+max_training_acc 1.0
+avg_training_recall 0.9998116678346181
+validating ...
+100%|██████████| 1427/1427 [00:23<00:00, 61.80it/s]
+ 91%|█████████ | 648/713 [00:00<00:00, 716.99it/s]avg_loss 0.0005859609970122153
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9997194950911642
+epoch 9
+100%|██████████| 713/713 [00:00<00:00, 715.57it/s]
+100%|██████████| 1427/1427 [00:23<00:00, 61.59it/s]
+avg_hit_at_one 1.0
+avg_training_loss 0.00028973691274642685
+max_training_acc 1.0
+avg_training_recall 0.9998642256482131
+validating ...
+ 99%|█████████▉| 705/713 [00:01<00:00, 708.31it/s]avg_loss 0.0005249350071677087
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996143057503508
+epoch 10
+100%|██████████| 713/713 [00:01<00:00, 701.36it/s]
+100%|█████████▉| 1420/1427 [00:22<00:00, 59.06it/s]avg_hit_at_one 1.0
+avg_training_loss 0.0002635554227675001
+max_training_acc 1.0
+avg_training_recall 0.9998642256482135
+validating ...
+100%|██████████| 1427/1427 [00:22<00:00, 63.00it/s]
+100%|██████████| 713/713 [00:01<00:00, 697.76it/s]
+avg_loss 0.0004638970894264717
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996493688639553
+epoch 11
+100%|██████████| 1427/1427 [00:22<00:00, 63.49it/s]
+avg_hit_at_one 1.0
+avg_training_loss 0.0002155362526332968
+max_training_acc 1.0
+avg_training_recall 0.9998817449194115
+validating ...
+100%|██████████| 713/713 [00:00<00:00, 722.78it/s]
+avg_loss 0.0004710997371092425
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996493688639553
+epoch 12
+100%|██████████| 1427/1427 [00:22<00:00, 64.21it/s]
+avg_hit_at_one 1.0
+avg_training_loss 0.00017789627660416113
+max_training_acc 1.0
+avg_training_recall 0.99989926419061
+validating ...
+ 92%|█████████▏| 659/713 [00:00<00:00, 728.24it/s]avg_loss 0.000494789846290171
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996493688639553
+epoch 13
+100%|██████████| 713/713 [00:00<00:00, 726.43it/s]
+100%|█████████▉| 1423/1427 [00:23<00:00, 51.57it/s]avg_hit_at_one 1.0
+avg_training_loss 0.00016782582239783026
+max_training_acc 1.0
+avg_training_recall 0.9998948843728104
+validating ...
+100%|██████████| 1427/1427 [00:23<00:00, 61.76it/s]
+ 97%|█████████▋| 691/713 [00:01<00:00, 641.02it/s]avg_loss 0.0004228383423711347
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9996143057503508
+epoch 14
+100%|██████████| 713/713 [00:01<00:00, 625.30it/s]
+ 55%|█████▌    | 790/1427 [00:13<00:10, 62.29it/s]
