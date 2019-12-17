@@ -94,7 +94,7 @@ class RelOrderReasoner(nn.Module):
 
         loss = self.bce_loss(rel_score, answer_dist)
 
-        pred = torch.topk(rel_score, 3, dim=1)[1]
+        pred = torch.topk(rel_score, num_hop, dim=1)[1]
 
         return loss, pred, None  # pred, pred_dist
 

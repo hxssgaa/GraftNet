@@ -198,7 +198,7 @@ def inference_answer(facts, questions):
         for pred_ans in inference_answers:
             if pred_ans in actual_answers:
                 precision += 1
-        precision = float(precision) / len(inference_answers)
+        precision = float(precision) / len(inference_answers) if len(inference_answers) > 0 else 0
         recall = 0
         for act_ans in actual_answers:
             if act_ans in inference_answers:
@@ -250,7 +250,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, reverse_re
     print('avg_hit_at_one', sum(eval_hit_at_one) / len(eval_hit_at_one))
     print('avg_recall', sum(eval_recall) / len(eval_recall))
 
-    return sum(eval_recall) / len(eval_recall)
+    return sum(eval_hit_at_one) / len(eval_hit_at_one)
 
 
 def train_relreasoner(cfg, is_order=False):
@@ -259,7 +259,7 @@ def train_relreasoner(cfg, is_order=False):
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     reverse_relation2id = {v: k for k, v in relation2id.items()}
-    num_hop = 3
+    num_hop = cfg['num_hop']
 
     if not is_order:
         train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop,
@@ -268,7 +268,7 @@ def train_relreasoner(cfg, is_order=False):
         valid_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
     else:
-        max_relation = 2
+        max_relation = cfg['max_relation']
         train_data = RelOrderReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop, max_relation,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
@@ -332,8 +332,8 @@ def prediction_relreasoner(cfg):
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     reverse_relation2id = {v: k for k, v in relation2id.items()}
-    num_hop = 3
-    max_relation = 2
+    num_hop = cfg['num_hop']
+    max_relation = cfg['max_relation']
 
     # train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, num_hop,
     #                                    word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
@@ -346,14 +346,14 @@ def prediction_relreasoner(cfg):
 
     my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
 
-    eval_recall = inference_relreasoner(my_model, 26, test_data, entity2id, reverse_relation2id, cfg, is_train=False)
+    eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, reverse_relation2id, cfg, is_train=False)
 
     test_data = RelOrderReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, num_hop, max_relation,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1,
                                            pred_data=test_data.data)
     my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id), is_order=True)
 
-    eval_recall = inference_relreasoner(my_model, 26, test_data, entity2id, reverse_relation2id, cfg, is_order=True, is_train=False)
+    eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, reverse_relation2id, cfg, is_order=True, is_train=False)
 
     eval_hit_at_one, eval_recall, eval_f1 = inference_answer(facts_rel, test_data.data)
     print('testing eval hit@1:', eval_hit_at_one)

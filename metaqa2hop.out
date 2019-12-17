@@ -1,0 +1,34 @@
+  np_resource = np.dtype([("resource", np.ubyte, 1)])
+loading data from datasets/metaqa/2hop/test.json
+100%|██████████| 14872/14872 [00:00<00:00, 4208169.00it/s]
+0it [00:00, ?it/s]div 1 14872
+building word index ...
+preparing data ...
+14872it [00:00, 45422.74it/s]
+loaded relation_emb
+load word emb
+loading model from model/wikimovie/best_relreasoner2
+100%|██████████| 676/676 [00:00<00:00, 688.65it/s]
+0it [00:00, ?it/s]avg_loss 0.010476306631207775
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9998318988703606
+loading data from datasets/metaqa/2hop/test.json
+div 1 14872
+building word index ...
+preparing data ...
+14872it [00:00, 41594.28it/s]
+loaded relation_emb
+load word emb
+loading model from model/wikimovie/best_relreasoner2_order
+100%|██████████| 676/676 [00:01<00:00, 621.76it/s]
+avg_loss 0.011883965616952076
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 1.0
+100%|██████████| 14872/14872 [00:00<00:00, 96690.56it/s]
+testing eval hit@1: 0.9999327595481442
+testing recall: 0.9999220010758472
+testing f1: 0.9455672788266907
+
+Process finished with exit code 0

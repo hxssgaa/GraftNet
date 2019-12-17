@@ -1,14 +1,14 @@
 name: 'metaqa'
-data_folder: 'datasets/metaqa/3hop/'
-train_data: 'train_v2.json'
+data_folder: 'datasets/metaqa/1hop/'
+train_data: 'train.json'
 train_documents: #'documents.json'
-dev_data: 'dev_v2.json'
+dev_data: 'dev.json'
 dev_documents: #'documents.json'
-test_data: 'test_v2.json'
+test_data: 'test.json'
 test_documents: #'documents.json'
 fact_data: 'datasets/metaqa/kb.txt'
 
-word2id: 'vocab_new.txt'
+word2id: 'vocab.txt'
 relation2id: 'relations.txt'
 entity2id: 'entities.txt'
 word_emb_file: 'word_emb_100d.npy'
@@ -16,17 +16,17 @@ entity_emb_file: null
 entity_kge_file: null 
 relation_emb_file: 'relation_emb_100d.npy'
 relation_kge_file: null
-num_hop: 3
-max_relation: 2
+num_hop: 1
+max_relation: 1
 
 to_save_model: True
-save_model_file: "model/wikimovie/best_metaqa3_model"
-save_fpnet_model_file: "model/wikimovie/best_relreasoner3"
-save_rel_order_model_file: "model/wikimovie/best_relreasoner3_order"
+save_model_file: "model/wikimovie/best_metaqa1_model"
+save_fpnet_model_file: "model/wikimovie/best_relreasoner1"
+save_rel_order_model_file: "model/wikimovie/best_relreasoner1_order"
 pred_file: "model/wikimovie/pred_doc"
 load_model_file: #"model/wikimovie/best_metaqa3_%d_model"
-load_fpnet_model_file: "model/wikimovie/best_relreasoner3"
-load_rel_order_model_file: "model/wikimovie/best_relreasoner3_order"
+load_fpnet_model_file: "model/wikimovie/best_relreasoner1"
+load_rel_order_model_file: "model/wikimovie/best_relreasoner1_order"
 
 # graph options
 fact_dropout: 0.0
@@ -47,7 +47,7 @@ use_inverse_relation: True
 # optimization
 num_epoch: 80
 batch_size: 80
-test_batch_size: 26
+test_batch_size: 29
 gradient_clip: 1
 learning_rate: 0.001
 lstm_dropout: 0.3
