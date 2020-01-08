@@ -1,8 +1,8 @@
 name: 'complexwebq'
 data_folder: 'datasets/complexwebq/'
-train_data: 'train.json'
-dev_data: 'dev.json'
-test_data: 'test.json'
+train_data: 'complex_train_processed2.json'
+dev_data: 'complex_dev_processed2.json'
+test_data: 'complex_test_processed2.json'
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
@@ -10,13 +10,17 @@ entity2id: 'entities_v2.txt'
 word_emb_file: "word_emb_100d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_200d.npy"
+relation_emb_file: "relation_emb_100d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
+fact_data: "all_facts_all_new.json"
+
 
 to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid"
 pred_file: "model/complexwebq/pred_hybrid"
 load_model_file: #"model/complexwebq/best_model_hybrid"
+save_fpnet_model_file: "model/complexwebq/best_relreasoner.7_2"
+load_fpnet_model_file: #"model/complexwebq/best_relreasoner.7"
 
 # graph options
 fact_dropout: 0.1
@@ -26,8 +30,9 @@ use_doc: False
 num_layer: 3
 max_query_word: 20
 max_document_word: 50
+num_hop: 2
 
-entity_dim: 25
+entity_dim: 100
 word_dim: 100
 kge_dim: 25
 pagerank_lambda: 0.8
@@ -35,10 +40,11 @@ fact_scale: 3
 use_inverse_relation: False
 
 # optimization
-num_epoch: 20
-batch_size: 32
+num_epoch: 250
+batch_size: 40
+test_batch_size: 20
 gradient_clip: 1
-learning_rate: 0.003
+learning_rate: 0.001
 lstm_dropout: 0.3
 linear_dropout: 0.2
 is_debug: False

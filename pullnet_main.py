@@ -227,9 +227,11 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, reverse_re
         pred = pred.data.cpu().numpy()
         if not is_train and not is_order:
             for row in range(pred.shape[0]):
+                cands = data.data[iteration * test_batch_size + row]['rel_cands_multi_cands']
                 relations = []
                 for col in range(pred.shape[1]):
-                    relations.append(reverse_relation2id[pred[row][col]])
+                    if pred[row][col] < len(cands):
+                        relations.append(cands[pred[row][col]])
                 data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
         if not is_train and is_order:
             for row in range(pred.shape[0]):
@@ -254,7 +256,8 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, reverse_re
 
 
 def train_relreasoner(cfg, is_order=False):
-    facts = load_fact2(cfg['fact_data'])
+    # facts = load_fact2(cfg['fact_data'])
+    facts = load_json(cfg['fact_data'])
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
@@ -278,6 +281,9 @@ def train_relreasoner(cfg, is_order=False):
     my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, len(entity2id), len(word2id), is_order=is_order)
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(trainable_parameters, lr=1e-4)
+    for p in my_model.parameters():
+        if p.requires_grad:
+            print(p.name, p.numel())
 
     best_dev_recall = 0.0
 
@@ -323,6 +329,25 @@ def train_relreasoner(cfg, is_order=False):
 
         except KeyboardInterrupt:
             break
+
+
+def prediction_iterative_chain(cfg):
+    facts = load_json(cfg['fact_data'])
+    word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
+    relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
+    entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
+    reverse_relation2id = {v: k for k, v in relation2id.items()}
+    num_hop = cfg['num_hop']
+
+    test_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, num_hop,
+                                      word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
+
+    my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
+
+    eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, reverse_relation2id,
+                                        cfg, is_train=False)
+
+    print('done')
 
 
 def prediction_relreasoner(cfg):
@@ -541,7 +566,6 @@ def inference_fpnet(my_model, valid_data, entity2id, cfg, log_info=False):
     return sum(eval_recall) / len(eval_recall)
 
 
-
 if __name__ == "__main__":
     config_file = sys.argv[2]
     CFG = get_config(config_file)
@@ -557,5 +581,7 @@ if __name__ == "__main__":
         train_relreasoner(CFG, True)
     elif '--prediction-relreasoner' == sys.argv[1]:
         prediction_relreasoner(CFG)
+    elif '--prediction-iterative-chain' == sys.argv[1]:
+        prediction_iterative_chain(CFG)
     else:
         assert False, "--train or --test?"

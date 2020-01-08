@@ -11,7 +11,7 @@ from preprocessing.use_helper import UseVector
 RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
 OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb.pkl'
 QUESTION_FILE = 'datasets/complexwebq/questions/all_questions.json'
-WORD_DIM = 200
+WORD_DIM = 100
 
 
 def clean_text(text, filter_dot=False):
@@ -112,7 +112,7 @@ def fix_questions():
     print(len(test_data))
     save_json(train_data, 'datasets/complexwebq/train.json')
     save_json(dev_data, 'datasets/complexwebq/dev.json')
-    save_json(test_data, 'datasets/complexwebq/test.json')
+    save_json(test_data, 'datasaets/complexwebq/test.json')
 
 
 def analyse_testing_recall():
@@ -152,13 +152,16 @@ def process_vocab(embeddings_file):
     for q in test_data:
         processed_question = clean_text(q['question'])
         test_corpus.update(processed_question)
+    with open('datasets/complexwebq/vocab.txt') as f:
+        corpus = set([e.strip() for e in f.readlines()])
     corpus.add('__unk__')
-    corpus_list = list(sorted(corpus))
-    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 200) for word in corpus_list])
-    with open('datasets/complexwebq/vocab.txt', 'w') as f:
-        for e in corpus_list:
-            f.writelines(e + '\n')
-    np.save('datasets/complexwebq/word_emb_200d.npy', word_emb_npy)
+    corpus_list = list(corpus)
+
+    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 100) for word in corpus_list])
+    # with open('datasets/complexwebq/vocab.txt', 'w') as f:
+    #     for e in corpus_list:
+    #         f.writelines(e + '\n')
+    np.save('datasets/complexwebq/word_emb_100d.npy', word_emb_npy)
     print('train emb coverage: ', len(corpus & set(word2vec.keys())) / len(corpus))
     print('dev coverage: ', len(corpus & dev_corpus) / len(dev_corpus))
     print('test coverage: ', len(corpus & test_corpus) / len(test_corpus))
@@ -222,60 +225,60 @@ def process_relation_embedding(embedding_file, use_f=True):
 
     # Filter relations which are not included in the vocabulary at
     relation_emb = {k: v for k, v in relation_emb.items() if np.average(v) != 0}
-    relation_emb_npy = np.array([relation_emb[rel.strip()] if rel.strip() in relation_emb else np.random.uniform(-1, 1, 200) for rel in relations])
+    relation_emb_npy = np.array([relation_emb[rel.strip()] if rel.strip() in relation_emb else np.random.uniform(-1, 1, 100) for rel in relations])
 
     pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
-    np.save('datasets/complexwebq/relation_emb_200d.npy', relation_emb_npy)
+    np.save('datasets/complexwebq/relation_emb_100d.npy', relation_emb_npy)
     return relation_emb
 
 
 if __name__ == '__main__':
-    # result = process_relation_embedding('datasets/complexwebq/glove.6B.200d.txt', False)
+    result = process_relation_embedding('datasets/complexwebq/glove.6B.100d.txt', False)
     # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
     # process_entities()
     # process_vocab('datasets/complexwebq/glove.6B.200d.txt')
 
-    facts = load_json('datasets/complexwebq/all_facts.json')
-    questions = load_json(QUESTION_FILE)
-    for q in tqdm(questions):
-        q['path_v2'] = []
-        for path in q['path']:
-            if len(path) % 2 == 0:
-                continue
-            for i in range(len(path) // 2):
-                i = i * 2
-                s = path[i] if isinstance(path[i], list) else [path[i]]
-                o = path[i + 2]
-                entities = set()
-                tuples = set()
-                path_info = {'entities': [], 'tuples': []}
-                if i == 0:
-                    s = s[0]
-                    entities.add(s)
-                    for e in o:
-                        entities.add(e)
-                        if s in facts and e in facts[s]:
-                            direction, rel = facts[s][e]
-                            if direction == 0:
-                                tuples.add((s, rel, e))
-                            else:
-                                tuples.add((e, rel, s))
-                else:
-                    for idx in range(min(len(s), len(o))):
-                        sbj = s[idx]
-                        obj = o[idx]
-                        entities.add(sbj)
-                        entities.add(obj)
-                        if sbj in facts and obj in facts[sbj]:
-                            direction, rel = facts[sbj][obj]
-                            if direction == 0:
-                                tuples.add((sbj, rel, obj))
-                            else:
-                                tuples.add((obj, rel, sbj))
-                path_info['entities'] = list(sorted(entities))
-                path_info['tuples'] = list(sorted(tuples))
-                q['path_v2'].append(path_info)
-    save_json(questions, 'datasets/complexwebq/all_questions_v2.json')
+    # facts = load_json('datasets/complexwebq/all_facts.json')
+    # questions = load_json(QUESTION_FILE)
+    # for q in tqdm(questions):
+    #     q['path_v2'] = []
+    #     for path in q['path']:
+    #         if len(path) % 2 == 0:
+    #             continue
+    #         for i in range(len(path) // 2):
+    #             i = i * 2
+    #             s = path[i] if isinstance(path[i], list) else [path[i]]
+    #             o = path[i + 2]
+    #             entities = set()
+    #             tuples = set()
+    #             path_info = {'entities': [], 'tuples': []}
+    #             if i == 0:
+    #                 s = s[0]
+    #                 entities.add(s)
+    #                 for e in o:
+    #                     entities.add(e)
+    #                     if s in facts and e in facts[s]:
+    #                         direction, rel = facts[s][e]
+    #                         if direction == 0:
+    #                             tuples.add((s, rel, e))
+    #                         else:
+    #                             tuples.add((e, rel, s))
+    #             else:
+    #                 for idx in range(min(len(s), len(o))):
+    #                     sbj = s[idx]
+    #                     obj = o[idx]
+    #                     entities.add(sbj)
+    #                     entities.add(obj)
+    #                     if sbj in facts and obj in facts[sbj]:
+    #                         direction, rel = facts[sbj][obj]
+    #                         if direction == 0:
+    #                             tuples.add((sbj, rel, obj))
+    #                         else:
+    #                             tuples.add((obj, rel, sbj))
+    #             path_info['entities'] = list(sorted(entities))
+    #             path_info['tuples'] = list(sorted(tuples))
+    #             q['path_v2'].append(path_info)
+    # save_json(questions, 'datasets/complexwebq/all_questions_v2.json')
 
 
     # facts = load_json('datasets/complexwebq/all_facts.json')

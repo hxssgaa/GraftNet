@@ -1,5 +1,5 @@
 import itertools
-
+import nltk
 import numpy as np
 from tqdm import tqdm
 from util import load_json
@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 
 
 MAX_FACTS = 500
+KEEP_TAG = ['IN', 'NN', 'NNS', 'NNP', 'NNPS', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
 
 
 class RelReasonerDataLoader():
@@ -21,6 +22,8 @@ class RelReasonerDataLoader():
         self.num_kb_relation = len(relation2id)
         self.teacher_force = teacher_force
         self.num_hop = num_hop
+        self.max_local_path_rel = 300
+        self.max_rel_num = 3
 
         self.data = []
 
@@ -28,8 +31,11 @@ class RelReasonerDataLoader():
         f_in = load_json(data_file)
         f_in = f_in[:len(f_in)//div]
         for line in tqdm(f_in):
+            if len(line['rel_cands_multi']) == 0:
+                continue
+            #self.max_local_path_rel = max(self.max_local_path_rel, len(line['rel_cands_multi_cands']))
             self.data.append(line)
-        print('div', div, len(self.data))
+        print('max_local_path_rel:', self.max_local_path_rel)
         self.num_data = len(self.data)
 
         self.batches = np.arange(self.num_data)
@@ -39,10 +45,10 @@ class RelReasonerDataLoader():
         self.relation2id = relation2id
 
         print('preparing data ...')
-        self.local_kb_rel_path_rels = np.zeros((self.num_data, self.num_kb_relation))
-        self.relation_texts = np.full((len(self.relation2id), self.max_query_word), len(self.word2id), dtype=int)
+        self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel), len(self.relation2id), dtype=int)
+        self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.max_rel_num, self.max_query_word), len(self.word2id), dtype=int)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-        self.answer_dists = np.zeros((self.num_data, self.num_kb_relation), dtype=float)
+        self.answer_dists = np.zeros((self.num_data, self.max_local_path_rel), dtype=float)
 
         self._prepare_data()
 
@@ -54,30 +60,68 @@ class RelReasonerDataLoader():
         next_id = 0
         count_query_length = [0] * 50
         cache_question = {}
+        cache_relation = {}
 
-        for rel in self.relation2id:
-            idx_rel = self.relation2id[rel]
-            rel_word_spt = clean_text(rel)
-            for j, word in enumerate(rel_word_spt):
-                if j < self.max_query_word:
-                    if word in self.word2id:
-                        self.relation_texts[idx_rel, j] = self.word2id[word]
-                    else:
-                        self.relation_texts[idx_rel, j] = self.word2id['__unk__']
+        # for rel in self.relation2id:
+        #     idx_rel = self.relation2id[rel]
+        #     rel_word_spt = clean_text(rel)
+        #     for j, word in enumerate(rel_word_spt):
+        #         if j < self.max_query_word:
+        #             if word in self.word2id:
+        #                 self.relation_texts[idx_rel, j] = self.word2id[word]
+        #             else:
+        #                 self.relation_texts[idx_rel, j] = self.word2id['__unk__']
 
-        question_word_list = 'who, when, what, where, how, which, why, whom, whose'.split(', ')
+        question_word_list = 'who, when, what, where, how, which, why, whom, whose, the'.split(', ')
         stop_words = set(stopwords.words("english"))
         for idx_q, sample in tqdm(enumerate(self.data)):
             # build answers
             rel_ids = set()
-            for rel in sample['rel_path']:
-                rel_ids.add(self.relation2id[rel])
+            # TODO: replace 0 with num_hop
+            if 'rel_cands_multi' in sample:
+                # for hop in range(len(sample['rel_cands_multi'])):
+                for rel in sample['rel_cands_multi'][min(len(sample['rel_cands_multi']), self.num_hop) - 1]:
+                    if 'common' in rel:
+                        continue
+                    rel_ids.add(self.relation2id[rel])
+            else:
+                for rel in sample['rel_path']:
+                    rel_ids.add(self.relation2id[rel])
 
             # get a list of relation candidate paths
-            for i in range(len(self.relation2id)):
-                self.local_kb_rel_path_rels[idx_q][i] = i
-                if i in rel_ids:
+            # for i, rel in enumerate(rel_ids):
+            #     self.local_kb_rel_path_rels[idx_q][i] = rel
+            #     self.answer_dists[idx_q][i] = 1.0
+            #
+            # rel_cands = sample['rel_cands_multi_cands']
+            # for i in range(len(rel_ids), min(self.max_local_path_rel, len(rel_cands))):
+            #     self.local_kb_rel_path_rels[idx_q][i] = self.relation2id[rel_cands[i]]
+
+            rel_cands = sample['rel_cands_multi_cands']
+            for i in range(min(len(rel_cands), self.max_local_path_rel)):
+                rel = rel_cands[i]
+                rel_spt = rel.split('.')
+                if len(rel_spt) > 3:
+                    rel_spt = rel_spt[-3:]
+                for j in range(len(rel_spt)):
+                    if j - 3 < -len(rel_spt):
+                        rel = '__unk__'
+                    else:
+                        rel = rel_spt[j-3]
+                    if rel not in cache_relation:
+                        cache_relation[rel] = clean_text(rel, filter_dot=True)
+                    rel_word_spt = cache_relation[rel]
+                    for k, word in enumerate(rel_word_spt):
+                        if k < self.max_query_word:
+                            if word in self.word2id:
+                                self.relation_texts[idx_q, i, j, k] = self.word2id[word]
+                            else:
+                                self.relation_texts[idx_q, i, j, k] = self.word2id['__unk__']
+                self.local_kb_rel_path_rels[idx_q][i] = self.relation2id[rel_cands[i]]
+                if self.local_kb_rel_path_rels[idx_q][i] in rel_ids:
                     self.answer_dists[idx_q][i] = 1.0
+
+
             # for i in range(len(rel_cands)):
             #     rel_cand = list(map(self.relation2id.get, rel_cands[i]))
             #     if tuple(rel_cand) in rel_ids:
@@ -91,8 +135,22 @@ class RelReasonerDataLoader():
             if sample['question'] in cache_question:
                 question_word_spt = cache_question[sample['question']]
             else:
-                question_word_spt = clean_text(sample['question'])
-                question_word_spt = list(filter(lambda x: x not in stop_words, question_word_spt))
+                tokens = nltk.word_tokenize(sample['question'])
+                tagged_sent = nltk.pos_tag(tokens)
+                grammar = "NP: {<DT><NN*>+<IN><NNP>+}"
+                cp = nltk.RegexpParser(grammar)
+                parsed = cp.parse(tagged_sent)
+                question_word_spt = []
+                for e in parsed:
+                    if isinstance(e, nltk.Tree):
+                        for sub in e:
+                            if sub[1] in KEEP_TAG:
+                                question_word_spt.append(sub[0])
+                    elif e[1] in KEEP_TAG:
+                        question_word_spt.append(e[0])
+                # question_word_spt = clean_text(sample['question'])
+                # question_word_spt = list(filter(lambda x: x not in question_word_list, question_word_spt))
+                # question_word_spt = [e[0] for e in parsed if e[1] in KEEP_TAG]
                 cache_question[sample['question']] = question_word_spt
             count_query_length[len(question_word_spt)] += 1
             for j, word in enumerate(question_word_spt):
@@ -243,6 +301,6 @@ class RelReasonerDataLoader():
         sample_ids = self.batches[batch_size * iteration: batch_size * (iteration + 1)]
 
         return self.query_texts[sample_ids], \
-               self.relation_texts, \
+               self.relation_texts[sample_ids], \
                self.local_kb_rel_path_rels[sample_ids], \
                self.answer_dists[sample_ids]
