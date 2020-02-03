@@ -1,8 +1,8 @@
 name: 'complexwebq'
 data_folder: 'datasets/complexwebq/'
-train_data: 'complex_train_processed_new.json'
-dev_data: 'complex_dev_processed_new.json'
-test_data: 'complex_test_processed_new.json'
+train_data: 'complex_train_processed1.json'
+dev_data: 'complex_dev_processed1.json'
+test_data: 'complex_test_processed1.json'
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
@@ -16,11 +16,11 @@ fact_data: "datasets/complexwebq/all_facts_all_new2.json"
 
 
 to_save_model: True
-save_model_file: "model/complexwebq/best_model_hybrid2"
+save_model_file: "model/complexwebq/best_model_hybrid"
 pred_file: "model/complexwebq/pred_hybrid"
-load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner.11_1"
-load_fpnet_model_file: "model/complexwebq/best_relreasoner.11_1"
+load_model_file: #"model/complexwebq/best_model_hybrid"
+save_fpnet_model_file: "model/complexwebq/best_relchain_predictor"
+load_fpnet_model_file: #"model/complexwebq/best_relchain_predictor"
 
 # graph options
 fact_dropout: 0.1
@@ -40,8 +40,8 @@ fact_scale: 3
 use_inverse_relation: False
 
 # optimization
-num_epoch: 150
-batch_size: 80
+num_epoch: 250
+batch_size: 40
 test_batch_size: 20
 gradient_clip: 1
 learning_rate: 0.001

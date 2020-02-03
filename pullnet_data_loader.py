@@ -30,7 +30,6 @@ class DataLoader():
         print('loading data from', data_file)
         self.data = []
         f_in = load_json(data_file)
-        f_in = f_in[:len(f_in) // 10]
         for line in tqdm(f_in):
             self.data.append(line)
         self.data = np.array(self.data)

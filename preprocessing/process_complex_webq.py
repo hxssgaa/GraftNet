@@ -6,12 +6,12 @@ import numpy as np
 import wordninja
 import pickle as pkl
 from tqdm import tqdm
-from preprocessing.use_helper import UseVector
+# from preprocessing.use_helper import UseVector
 
 RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
 OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb.pkl'
 QUESTION_FILE = 'datasets/complexwebq/questions/all_questions.json'
-WORD_DIM = 100
+WORD_DIM = 300
 
 
 def clean_text(text, filter_dot=False):
@@ -157,11 +157,11 @@ def process_vocab(embeddings_file):
     corpus.add('__unk__')
     corpus_list = list(corpus)
 
-    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 100) for word in corpus_list])
+    word_emb_npy = np.array([word2vec[word] if word in word2vec else np.random.uniform(-1, 1, 300) for word in corpus_list])
     # with open('datasets/complexwebq/vocab.txt', 'w') as f:
     #     for e in corpus_list:
     #         f.writelines(e + '\n')
-    np.save('datasets/complexwebq/word_emb_100d.npy', word_emb_npy)
+    np.save('datasets/complexwebq/word_emb_300d.npy', word_emb_npy)
     print('train emb coverage: ', len(corpus & set(word2vec.keys())) / len(corpus))
     print('dev coverage: ', len(corpus & dev_corpus) / len(dev_corpus))
     print('test coverage: ', len(corpus & test_corpus) / len(test_corpus))
@@ -225,16 +225,16 @@ def process_relation_embedding(embedding_file, use_f=True):
 
     # Filter relations which are not included in the vocabulary at
     relation_emb = {k: v for k, v in relation_emb.items() if np.average(v) != 0}
-    relation_emb_npy = np.array([relation_emb[rel.strip()] if rel.strip() in relation_emb else np.random.uniform(-1, 1, 100) for rel in relations])
+    relation_emb_npy = np.array([relation_emb[rel.strip()] if rel.strip() in relation_emb else np.random.uniform(-1, 1, 300) for rel in relations])
 
     pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
-    np.save('datasets/complexwebq/relation_emb_100d.npy', relation_emb_npy)
+    np.save('datasets/complexwebq/relation_emb_300d.npy', relation_emb_npy)
     return relation_emb
 
 
 if __name__ == '__main__':
-    result = process_relation_embedding('datasets/complexwebq/glove.6B.100d.txt', False)
-    # process_vocab('datasets/complexwebq/glove.6B.100d.txt')
+    # result = process_relation_embedding('datasets/complexwebq/glove.840B.300d.txt', False)
+    process_vocab('datasets/complexwebq/glove.840B.300d.txt')
     # process_entities()
     # process_vocab('datasets/complexwebq/glove.6B.200d.txt')
 

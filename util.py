@@ -128,9 +128,11 @@ def cal_accuracy(pred, answer_dist):
         num_precision += precision
         num_recall += recall
         num_f1 += f1
-    for dist in answer_dist:
+    for i, dist in enumerate(answer_dist):
         if np.sum(dist) != 0:
             num_answerable += 1
+        else:
+            print
     return num_hit_at_one / len(pred), num_precision / len(pred), num_recall / len(pred), num_f1 / len(pred), num_answerable / len(pred)
 
 

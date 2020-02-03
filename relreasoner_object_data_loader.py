@@ -1,7 +1,6 @@
 import itertools
 import nltk
 import numpy as np
-import copy
 from tqdm import tqdm
 from util import load_json
 from preprocessing.process_complex_webq import clean_text
@@ -13,24 +12,20 @@ MAX_FACTS = 500
 KEEP_TAG = ['IN', 'NN', 'NNS', 'NNP', 'NNPS', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
 
 
-class RelReasonerDataLoader():
-    def __init__(self, data_file, facts, features, num_hop, word2id, relation2id, max_query_word, use_inverse_relation, div, teacher_force=False, data=None):
+class RelReasonerObjectDataLoader():
+    def __init__(self, data_file, facts, num_hop, word2id, relation2id, max_query_word, use_inverse_relation, div, teacher_force=False, data=None):
         self.use_inverse_relation = use_inverse_relation
         self.max_local_entity = 0
         self.max_facts = 0
         self.max_query_word = max_query_word
         self.facts = facts
-        self.features = features
         self.num_kb_relation = len(relation2id)
         self.teacher_force = teacher_force
         self.num_hop = num_hop
         self.max_local_path_rel = 0
         self.max_rel_num = 3
-        self.max_seed_entities = 10
-        self.max_type_word = 3
 
         self.data = []
-        self.origin_data = []
 
         print('loading data from', data_file)
         if data:
@@ -39,16 +34,10 @@ class RelReasonerDataLoader():
             f_in = load_json(data_file)
             f_in = f_in[:len(f_in)//div]
         for line in tqdm(f_in):
-            self.origin_data.append(line)
-            rel_chain_map = line['rel_chain_map'][str(self.num_hop)]
-            for k, v in rel_chain_map.items():
-                prev_chain = k.rsplit('|||')
-                data_line_copy = line.copy()
-                data_line_copy['seed_entity'] = [e for idx_e, e in enumerate(prev_chain) if idx_e % 2 == 0]
-                data_line_copy['rel_chain_ground_truth'] = v['ground_truth'].copy()
-                data_line_copy['rel_chain_cands'] = v['cands'].copy()
-                self.data.append(data_line_copy)
-                self.max_local_path_rel = max(self.max_local_path_rel, len(data_line_copy['rel_chain_cands']))
+            if len(line['rel_cands_multi']) == 0:
+                continue
+            self.max_local_path_rel = max(self.max_local_path_rel, len(line['rel_cands_multi_cands%d' % self.num_hop]))
+            self.data.append(line)
         print('max_local_path_rel:', self.max_local_path_rel)
         self.num_data = len(self.data)
 
@@ -60,45 +49,12 @@ class RelReasonerDataLoader():
         self.reverse_relation2id = {v: k for k, v in relation2id.items()}
 
         print('preparing data ...')
-        self.seed_entity_types = np.full((self.num_data, self.num_hop, self.max_type_word), len(self.word2id), dtype=int)
-        self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel, self.num_hop), len(self.relation2id), dtype=int)
+        self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel), len(self.relation2id), dtype=int)
         self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.max_rel_num, self.max_query_word), len(self.word2id), dtype=int)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
         self.answer_dists = np.zeros((self.num_data, self.max_local_path_rel), dtype=float)
 
         self._prepare_data()
-
-    def get_gt_constraint_rels(self, q, num_hop, no_compare_seed=False):
-        if num_hop == 1:
-            gt_constraint_rels = set((e[1],) for e in q['ground_truth_path'] if (num_hop - 1) * 2 < len(e)
-                                     and num_hop * 2 - 1 < len(e) and (e[(num_hop - 1) * 2] == q['seed_entity'] or no_compare_seed))
-        elif num_hop == 2:
-            gt_constraint_rels = set((e[1], e[3]) for e in q['ground_truth_path'] if (num_hop - 1) * 2 < len(e)
-                                     and num_hop * 2 - 1 < len(e) and (e[(num_hop - 1) * 2] == q['seed_entity'] or no_compare_seed))
-        elif num_hop == 3:
-            gt_constraint_rels = set((e[1], e[3], e[5]) for e in q['ground_truth_path'] if (num_hop - 1) * 2 < len(e)
-                                     and num_hop * 2 - 1 < len(e) and (e[(num_hop - 1) * 2] == q['seed_entity'] or no_compare_seed))
-        else:
-            gt_constraint_rels = None
-        return gt_constraint_rels
-
-    def resample_multi_rels(self, q, num_hop, prev_rels):
-        if 'ground_truth_map' not in q:
-            return
-        constraint_rels = set(self.facts[q['seed_entity']].keys())
-        filter_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
-        constraint_rels -= filter_rels
-        gt_constraint_rels = self.get_gt_constraint_rels(q, num_hop)
-        if not constraint_rels:
-            constraint_rels = {'EOD'}
-        if prev_rels:
-            constraint_rels = set([tuple(prev_rels + [e2]) for e2 in constraint_rels])
-        # TODO: FIXTHIS for multi-hop
-        if num_hop - 1 < len(q['rel_cands_multi']):
-            q['rel_cands_multi'][num_hop - 1] = list(gt_constraint_rels)
-            if not gt_constraint_rels:
-                del q['rel_cands_multi'][num_hop - 1]
-        q['rel_cands_multi_cands%d' % num_hop] = list(constraint_rels)
 
     def _prepare_data(self):
         """
@@ -108,6 +64,7 @@ class RelReasonerDataLoader():
         next_id = 0
         count_query_length = [0] * 50
         cache_question = {}
+        cache_relation = {}
 
         # for rel in self.relation2id:
         #     idx_rel = self.relation2id[rel]
@@ -121,84 +78,30 @@ class RelReasonerDataLoader():
 
         question_word_list = 'who, when, what, where, how, which, why, whom, whose, the'.split(', ')
         stop_words = set(stopwords.words("english"))
-        avg_total_words_recall = 0.0
         for idx_q, sample in tqdm(enumerate(self.data)):
-            # build answers
-            rel_ids = set()
-            seed_entities = sample['seed_entity']
-            ground_truth_key = 'rel_chain_ground_truth'
-            if ground_truth_key in sample:
-                gt = sample[ground_truth_key]
-                for each_gt in gt:
-                    rel_ids.add(tuple([self.relation2id[r] for r in each_gt]))
+            gt_entities = set()
+            for e in sample['ground_truth_path']:
+                if self.num_hop * 2 < len(e):
+                    gt_entities.add(e[self.num_hop * 2])
 
-            # if 'rel_cands_multi' in sample:
-            #     if self.num_hop - 1 < len(sample['rel_cands_multi']):
-            #         for rel in sample['rel_cands_multi'][self.num_hop - 1]:
-            #             rel_ids.add(tuple([self.relation2id[r] for r in rel]))
-            #     else:
-            #         prev_rels = set()
-            #         if len(sample['rel_cands_multi']) > self.num_hop - 2 and self.num_hop > 1:
-            #             for rel in sample['rel_cands_multi'][self.num_hop - 2]:
-            #                 prev_rels.add(tuple(rel))
-            #         elif len(sample['rel_cands_multi']) > self.num_hop - 3 and self.num_hop > 2:
-            #             for rel in sample['rel_cands_multi'][self.num_hop - 3]:
-            #                 prev_rels.add(tuple(rel))
-            #         for prev_rel in prev_rels:
-            #             rel_id_tuple = tuple([self.relation2id[r] for r in prev_rel] + [self.relation2id['EOD']])
-            #             if len(rel_id_tuple) < self.num_hop:
-            #                 rel_id_tuple = tuple(list(rel_id_tuple) + [self.relation2id['EOD']] * (self.num_hop - len(rel_id_tuple)))
-            #             rel_ids.add(rel_id_tuple)
+            cand_entities = set()
+            gt_rels = sample['rel_cands_multi']
 
-            # build seed entity types
-            total_words = 0
-            known_words = 0
-            for idx_seed_entity, seed_entity in enumerate(seed_entities):
-                seed_entity_type = None
-                if seed_entity in self.features:
-                    if 'prom_types' in self.features[seed_entity] and self.features[seed_entity]['prom_types']:
-                        seed_entity_type = self.features[seed_entity]['prom_types'][0] \
-                            if isinstance(self.features[seed_entity]['prom_types'], list) else self.features[seed_entity]['prom_types']
-                    elif 'types' in self.features[seed_entity] and self.features[seed_entity]['types']:
-                        seed_entity_type = self.features[seed_entity]['types'][0] \
-                            if isinstance(self.features[seed_entity]['types'], list) else self.features[seed_entity]['types']
-                    if seed_entity_type:
-                        seed_entity_type = seed_entity_type.split('.')[-1].split('_')
-                        for idx, word in enumerate(seed_entity_type):
-                            if idx >= self.max_type_word:
-                                break
-                            if word in self.word2id:
-                                self.seed_entity_types[next_id, idx_seed_entity, idx] = self.word2id[word]
-                                known_words += 1
-                            else:
-                                self.seed_entity_types[next_id, idx_seed_entity, idx] = self.word2id['__unk__']
-                            total_words += 1
-            avg_total_words_recall += ((known_words / total_words) if total_words > 0 else 1)
+            rel_cands = sample['rel_cands_multi_cands%d' % self.num_hop]
+            if self.num_hop > 1:
+                prev_hop_rels = set()
+                for e in rel_cands:
+                    prev_hop_rels.add(tuple(e[:self.num_hop - 1]))
+                for e in prev_hop_rels:
+                    rel_cands.insert(0, list(e) + ['EOD'])
+                if not rel_cands and 'relation_pred2' in sample:
+                    rel_cands = [list(sample['relation_pred2']) + ['EOD']]
 
-            # get a list of relation candidate paths
-            # for i, rel in enumerate(rel_ids):
-            #     self.local_kb_rel_path_rels[idx_q][i] = rel
-            #     self.answer_dists[idx_q][i] = 1.0
-            #
-            # rel_cands = sample['rel_cands_multi_cands']
-            # for i in range(len(rel_ids), min(self.max_local_path_rel, len(rel_cands))):
-            #     self.local_kb_rel_path_rels[idx_q][i] = self.relation2id[rel_cands[i]]
-
-            rel_cands = sample['rel_chain_cands']
-            # if self.num_hop > 1:
-            #     prev_hop_rels = set()
-            #     for e in rel_cands:
-            #         prev_hop_rels.add(tuple(e[:self.num_hop - 1]))
-            #     for e in prev_hop_rels:
-            #         rel_cands.insert(0, list(e) + ['EOD'])
-            #     if not rel_cands and 'relation_pred2' in sample:
-            #         rel_cands = [list(sample['relation_pred2']) + ['EOD']]
-
-            # # filtering invalid cands
-            # rel_cands = [e for e in rel_cands if (e[-1] not in (
-            #     'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals',
-            #     'rdf-schema#domain', 'rdf-schema#range') and
-            #                                       not e[-1].startswith('freebase.'))]
+            # filtering invalid cands
+            rel_cands = [e for e in rel_cands if (e[-1] not in (
+                'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals',
+                'rdf-schema#domain', 'rdf-schema#range') and
+                                                  not e[-1].startswith('freebase.'))]
 
             # if self.teacher_force:
             #     rel_cands_set = list(gt_rels | set(rel_cands[:self.max_local_path_rel - len(gt_rels)]))
@@ -206,7 +109,10 @@ class RelReasonerDataLoader():
             # else:
             #     self.max_local_path_rel = 300
 
+            new_rel_cands = []
             for i in range(min(len(rel_cands), self.max_local_path_rel)):
+                rel = rel_cands[i]
+                new_rel_cands.append(rel)
                 # rel_spt = rel.split('.')
                 # if len(rel_spt) > 3:
                 #     rel_spt = rel_spt[-3:]
@@ -231,9 +137,7 @@ class RelReasonerDataLoader():
                     if tuple(self.local_kb_rel_path_rels[idx_q][i]) in rel_ids:
                         self.answer_dists[idx_q][i] = 1.0
 
-            if np.sum(self.answer_dists[idx_q]) == 0:
-                pass
-
+            sample['rel_cands_multi_cands%d' % self.num_hop] = new_rel_cands
             # if np.sum(self.answer_dists[idx_q]) == 0:
             #     print('wow')
 
@@ -276,8 +180,6 @@ class RelReasonerDataLoader():
                         self.query_texts[next_id, j] = self.word2id['__unk__']
 
             next_id += 1
-        # print(avg_total_words_recall / len(self.data))
-        # print('asdasdasdas')
 
     def _build_local_tuples(self, seeds, answers):
         # relations in local KB
@@ -420,5 +322,4 @@ class RelReasonerDataLoader():
         return self.query_texts[sample_ids], \
                self.relation_texts[sample_ids], \
                self.local_kb_rel_path_rels[sample_ids], \
-               self.seed_entity_types[sample_ids], \
                self.answer_dists[sample_ids]

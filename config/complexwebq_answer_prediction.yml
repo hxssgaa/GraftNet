@@ -1,29 +1,29 @@
 name: 'complexwebq'
 data_folder: 'datasets/complexwebq/'
-train_data: 'complex_train_processed_new.json'
-dev_data: 'complex_dev_processed_new.json'
-test_data: 'complex_test_processed_new.json'
+train_data: 'complex_train_answer_prediction.json'
+dev_data: 'complex_dev_answer_prediction.json'
+test_data: 'complex_test_answer_prediction.json'
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
 entity2id: 'entities_v2.txt'
-word_emb_file: "word_emb_300d.npy"
+word_emb_file: "word_emb_100d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_300d.npy"
+relation_emb_file: "relation_emb_100d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 fact_data: "datasets/complexwebq/all_facts_all_new2.json"
 
 
 to_save_model: True
-save_model_file: "model/complexwebq/best_model_hybrid2"
+save_model_file: "model/complexwebq/best_model_hybrid"
 pred_file: "model/complexwebq/pred_hybrid"
-load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner.11_1"
-load_fpnet_model_file: "model/complexwebq/best_relreasoner.11_1"
+load_model_file: #"model/complexwebq/best_model_hybrid"
+save_fpnet_model_file: "model/complexwebq/best_relreasoner.9_1"
+load_fpnet_model_file: #"model/complexwebq/best_relreasoner.9_2"
 
 # graph options
-fact_dropout: 0.1
+fact_dropout: 0.0
 use_kb: True
 use_doc: False
 
@@ -32,15 +32,15 @@ max_query_word: 20
 max_document_word: 50
 num_hop: 1
 
-entity_dim: 300
-word_dim: 300
+entity_dim: 100
+word_dim: 100
 kge_dim: 25
 pagerank_lambda: 0.8
 fact_scale: 3
-use_inverse_relation: False
+use_inverse_relation: True
 
 # optimization
-num_epoch: 150
+num_epoch: 250
 batch_size: 80
 test_batch_size: 20
 gradient_clip: 1

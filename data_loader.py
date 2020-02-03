@@ -145,8 +145,12 @@ class DataLoader():
             # construct distribution for answers
             for answer in sample['answers']:
                 keyword = 'answer_id'
-                if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
-                    self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
+                if isinstance(answer, dict):
+                    if answer[keyword] in self.entity2id and self.entity2id[answer[keyword]] in g2l:
+                        self.answer_dists[next_id, g2l[self.entity2id[answer[keyword]]]] = 1.0
+                else:
+                    if answer in self.entity2id and self.entity2id[answer] in g2l:
+                        self.answer_dists[next_id, g2l[self.entity2id[answer]]] = 1.0
 
             self.kb_adj_mats[next_id] = (np.array(entity2fact_f, dtype=int), np.array(entity2fact_e, dtype=int), np.array([1.0] * len(entity2fact_f))), (np.array(fact2entity_e, dtype=int), np.array(fact2entity_f, dtype=int), np.array([1.0] * len(fact2entity_e)))
             self.entity_poses[next_id] = (entity_pos_local_entity_id, entity_pos_word_id, entity_pos_word_weights)
@@ -209,8 +213,6 @@ class DataLoader():
                (self._build_kb_adj_mat(sample_ids, fact_dropout=fact_dropout)), \
                self.kb_fact_rels[sample_ids], \
                self.query_texts[sample_ids], \
-               self._build_document_text(sample_ids), \
-               (self._build_entity_pos(sample_ids)), \
                self.answer_dists[sample_ids]
 
 

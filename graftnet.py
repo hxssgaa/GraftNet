@@ -14,7 +14,7 @@ VERY_NEG_NUMBER = -100000000000
 
 
 class GraftNet(nn.Module):
-    def __init__(self, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file, pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity, num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, use_kb, use_doc, use_inverse_relation):
+    def __init__(self, trainable_entities, pretrained_word_embedding_file, pretrained_entity_emb_file, pretrained_entity_kge_file, pretrained_relation_emb_file, pretrained_relation_kge_file, num_layer, num_relation, num_entity, num_word, entity_dim, word_dim, kge_dim, pagerank_lambda, fact_scale, lstm_dropout, linear_dropout, use_kb, use_doc, use_inverse_relation):
         """
         num_relation: number of relation including self-connection
         """
@@ -35,11 +35,13 @@ class GraftNet(nn.Module):
         # initialize entity embedding
         self.entity_embedding = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=word_dim,
                                              padding_idx=num_entity)
+        self.entity_embedding.weight.requires_grad = False
         if pretrained_entity_emb_file is not None:
             self.entity_embedding.weight = nn.Parameter(
                 torch.from_numpy(np.pad(np.load(pretrained_entity_emb_file), ((0, 1), (0, 0)), 'constant')).type(
                     'torch.FloatTensor'))
             self.entity_embedding.weight.requires_grad = False
+        self.entity_embedding.weight[list(trainable_entities), :].requires_grad = True
         if pretrained_entity_kge_file is not None:
             self.has_entity_kge = True
             self.entity_kge = nn.Embedding(num_embeddings=num_entity + 1, embedding_dim=kge_dim, padding_idx=num_entity)
@@ -54,7 +56,7 @@ class GraftNet(nn.Module):
             self.entity_linear = nn.Linear(in_features=word_dim, out_features=entity_dim)
 
         # initialize relation embedding
-        self.relation_embedding = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=2 * word_dim, padding_idx=num_relation)
+        self.relation_embedding = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=word_dim, padding_idx=num_relation)
         if pretrained_relation_emb_file is not None:
             if use_inverse_relation:
                 self.relation_embedding.weight = nn.Parameter(
@@ -68,9 +70,9 @@ class GraftNet(nn.Module):
             self.relation_kge.weight = nn.Parameter(torch.from_numpy(np.pad(np.load(pretrained_relation_kge_file), ((0, 1), (0, 0)), 'constant')).type('torch.FloatTensor'))
         
         if self.has_relation_kge:
-            self.relation_linear = nn.Linear(in_features=2 * word_dim + kge_dim, out_features=entity_dim)
+            self.relation_linear = nn.Linear(in_features=word_dim + kge_dim, out_features=entity_dim)
         else:
-            self.relation_linear = nn.Linear(in_features=2 * word_dim, out_features=entity_dim)
+            self.relation_linear = nn.Linear(in_features=word_dim, out_features=entity_dim)
         
         # create linear functions
         self.k = 2 + (self.use_kb or self.use_doc)
