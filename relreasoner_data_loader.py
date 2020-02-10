@@ -42,11 +42,12 @@ class RelReasonerDataLoader():
             self.origin_data.append(line)
             rel_chain_map = line['rel_chain_map'][str(self.num_hop)]
             for k, v in rel_chain_map.items():
-                prev_chain = k.rsplit('|||')
                 data_line_copy = line.copy()
-                data_line_copy['seed_entity'] = [e for idx_e, e in enumerate(prev_chain) if idx_e % 2 == 0]
-                data_line_copy['rel_chain_ground_truth'] = v['ground_truth'].copy()
-                data_line_copy['rel_chain_cands'] = v['cands'].copy()
+                data_line_copy['seed_entity'] = k
+                gt = v['ground_truth'].copy()
+                cands = v['cands'].copy()
+                data_line_copy['rel_chain_ground_truth'] = gt
+                data_line_copy['rel_chain_cands'] = cands
                 self.data.append(data_line_copy)
                 self.max_local_path_rel = max(self.max_local_path_rel, len(data_line_copy['rel_chain_cands']))
         print('max_local_path_rel:', self.max_local_path_rel)
@@ -60,7 +61,7 @@ class RelReasonerDataLoader():
         self.reverse_relation2id = {v: k for k, v in relation2id.items()}
 
         print('preparing data ...')
-        self.seed_entity_types = np.full((self.num_data, self.num_hop, self.max_type_word), len(self.word2id), dtype=int)
+        self.seed_entity_types = np.full((self.num_data, self.max_type_word), len(self.word2id), dtype=int)
         self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel, self.num_hop), len(self.relation2id), dtype=int)
         self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.max_rel_num, self.max_query_word), len(self.word2id), dtype=int)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
@@ -125,12 +126,13 @@ class RelReasonerDataLoader():
         for idx_q, sample in tqdm(enumerate(self.data)):
             # build answers
             rel_ids = set()
-            seed_entities = sample['seed_entity']
+            seed_entity = sample['seed_entity']
             ground_truth_key = 'rel_chain_ground_truth'
             if ground_truth_key in sample:
                 gt = sample[ground_truth_key]
                 for each_gt in gt:
-                    rel_ids.add(tuple([self.relation2id[r] for r in each_gt]))
+                    rel_id = tuple([self.relation2id[r] for r in each_gt])
+                    rel_ids.add(rel_id)
 
             # if 'rel_cands_multi' in sample:
             #     if self.num_hop - 1 < len(sample['rel_cands_multi']):
@@ -153,26 +155,25 @@ class RelReasonerDataLoader():
             # build seed entity types
             total_words = 0
             known_words = 0
-            for idx_seed_entity, seed_entity in enumerate(seed_entities):
-                seed_entity_type = None
-                if seed_entity in self.features:
-                    if 'prom_types' in self.features[seed_entity] and self.features[seed_entity]['prom_types']:
-                        seed_entity_type = self.features[seed_entity]['prom_types'][0] \
-                            if isinstance(self.features[seed_entity]['prom_types'], list) else self.features[seed_entity]['prom_types']
-                    elif 'types' in self.features[seed_entity] and self.features[seed_entity]['types']:
-                        seed_entity_type = self.features[seed_entity]['types'][0] \
-                            if isinstance(self.features[seed_entity]['types'], list) else self.features[seed_entity]['types']
-                    if seed_entity_type:
-                        seed_entity_type = seed_entity_type.split('.')[-1].split('_')
-                        for idx, word in enumerate(seed_entity_type):
-                            if idx >= self.max_type_word:
-                                break
-                            if word in self.word2id:
-                                self.seed_entity_types[next_id, idx_seed_entity, idx] = self.word2id[word]
-                                known_words += 1
-                            else:
-                                self.seed_entity_types[next_id, idx_seed_entity, idx] = self.word2id['__unk__']
-                            total_words += 1
+            seed_entity_type = None
+            if seed_entity in self.features:
+                if 'prom_types' in self.features[seed_entity] and self.features[seed_entity]['prom_types']:
+                    seed_entity_type = self.features[seed_entity]['prom_types'][0] \
+                        if isinstance(self.features[seed_entity]['prom_types'], list) else self.features[seed_entity]['prom_types']
+                elif 'types' in self.features[seed_entity] and self.features[seed_entity]['types']:
+                    seed_entity_type = self.features[seed_entity]['types'][0] \
+                        if isinstance(self.features[seed_entity]['types'], list) else self.features[seed_entity]['types']
+                if seed_entity_type:
+                    seed_entity_type = seed_entity_type.split('.')[-1].split('_')
+                    for idx, word in enumerate(seed_entity_type):
+                        if idx >= self.max_type_word:
+                            break
+                        if word in self.word2id:
+                            self.seed_entity_types[next_id, idx] = self.word2id[word]
+                            known_words += 1
+                        else:
+                            self.seed_entity_types[next_id, idx] = self.word2id['__unk__']
+                        total_words += 1
             avg_total_words_recall += ((known_words / total_words) if total_words > 0 else 1)
 
             # get a list of relation candidate paths
@@ -207,28 +208,10 @@ class RelReasonerDataLoader():
             #     self.max_local_path_rel = 300
 
             for i in range(min(len(rel_cands), self.max_local_path_rel)):
-                # rel_spt = rel.split('.')
-                # if len(rel_spt) > 3:
-                #     rel_spt = rel_spt[-3:]
-                # for j in range(len(rel_spt)):
-                    # if j - 3 < -len(rel_spt):
-                    #     rel = '__unk__'
-                    # else:
-                    #     rel = rel_spt[j-3]
-                    # if rel not in cache_relation:
-                    #     cache_relation[rel] = clean_text(rel, filter_dot=True)
-                    # rel_word_spt = cache_relation[rel]
-                    # for k, word in enumerate(rel_word_spt):
-                    #     if k < self.max_query_word:
-                    #         if word in self.word2id:
-                    #             self.relation_texts[idx_q, i, j, k] = self.word2id[word]
-                    #         else:
-                    #             self.relation_texts[idx_q, i, j, k] = self.word2id['__unk__']
-
-                # TEEEEEEEEEEEEEEEEEEEE
                 for j in range(self.num_hop):
                     self.local_kb_rel_path_rels[idx_q][i][j] = self.relation2id[rel_cands[i][j]]
-                    if tuple(self.local_kb_rel_path_rels[idx_q][i]) in rel_ids:
+                    key = tuple(self.local_kb_rel_path_rels[idx_q][i])
+                    if key in rel_ids:
                         self.answer_dists[idx_q][i] = 1.0
 
             if np.sum(self.answer_dists[idx_q]) == 0:

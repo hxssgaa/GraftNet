@@ -101,6 +101,16 @@ def index_document_entities(documents, word2id, entity2id, max_document_word):
     
     return document_entity_indices, document_texts
 
+def cal_accuracy_2(pred, answer_dist):
+    num_hit_at_one = 0.0
+    num_precision = 0.0
+    num_recall = 0.0
+    num_f1 = 0.0
+    num_answerable = 0.0
+    num_hit_at_one = np.sum(pred ==answer_dist)
+    return num_hit_at_one / len(pred), num_precision / len(pred), num_recall / len(pred), num_f1 / len(pred), num_answerable / len(pred)
+
+
 def cal_accuracy(pred, answer_dist):
     """
     pred: batch_size
