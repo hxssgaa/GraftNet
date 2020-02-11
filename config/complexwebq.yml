@@ -1,8 +1,8 @@
 name: 'complexwebq'
 data_folder: 'datasets/complexwebq/'
-train_data: 'complex_train_processed_new.json'
-dev_data: 'complex_dev_processed_new.json'
-test_data: 'complex_test_processed_new.json'
+train_data: 'complex_train_processed_new2.json'
+dev_data: 'complex_dev_processed_new2.json'
+test_data: 'complex_test_processed_new2.json'
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
@@ -32,7 +32,7 @@ use_doc: False
 num_layer: 3
 max_query_word: 20
 max_document_word: 50
-num_hop: 3
+num_hop: 4
 
 entity_dim: 300
 word_dim: 300

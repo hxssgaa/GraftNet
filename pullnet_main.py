@@ -197,7 +197,7 @@ def inference_answer(facts, questions):
     return avg_hit_at_one / len(questions), avg_recall / len(questions), avg_f1 / len(questions)
 
 
-def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2id, reverse_relation2id, cfg, facts=None, num_hop=None, is_train=True, is_order=False, log_info=False):
+def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2id, reverse_relation2id, cfg, T=3, facts=None, num_hop=None, is_train=True, is_order=False, log_info=False):
     # Evaluation
     # test_batch_size = 1
     my_model.eval()
@@ -325,7 +325,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
             rel_cands = list(filter(lambda x: x not in block_rels, rel_cands))
             rel_cands = [cur_relation_chain + [k] for k in rel_cands]
             cands_map[k] = rel_cands
-            if num_hop < 3:
+            if num_hop < T:
                 if k in sample['rel_chain_map'][str(num_hop + 1)]:
                     sample['rel_chain_map'][str(num_hop + 1)][k]['cands'] = rel_cands
                 elif cur_relation_chain[-1] != 'EOD':
@@ -469,10 +469,12 @@ def prediction_iterative_chain(cfg):
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     reverse_relation2id = {v: k for k, v in relation2id.items()}
-    T = 3
+    T = 4
     load_model_files = ['model/complexwebq/best_relreasoner_14_1',
                         'model/complexwebq/best_relreasoner_14_2',
-                        'model/complexwebq/best_relreasoner_14_3']
+                        'model/complexwebq/best_relreasoner_14_3',
+                        'model/complexwebq/best_relreasoner_14_4',
+                        ]
 
     prev_data = None
     for num_hop in range(1, T + 1):
@@ -484,7 +486,7 @@ def prediction_iterative_chain(cfg):
         my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
 
         eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, relation2id, reverse_relation2id,
-                                            cfg, is_train=False, facts=facts, num_hop=num_hop)
+                                            cfg, T=T, is_train=False, facts=facts, num_hop=num_hop)
 
         prev_data = test_data.origin_data
 
@@ -500,14 +502,14 @@ def prediction_iterative_chain(cfg):
         final_answers = set()
         min_answers = 1000000000
         for entity in entities:
-            for hop in range(3, 0, -1):
+            for hop in range(T, 0, -1):
                 if 'rel_map_%d' % hop not in e:
                     continue
                 rel_map = e['rel_map_%d' % hop]
                 if entity in rel_map and rel_map[entity]:
                     entity2rel_chain[entity] = rel_map[entity]
                     break
-            for hop in range(3, 0, -1):
+            for hop in range(T, 0, -1):
                 if 'entities_%d' % hop not in e:
                     continue
                 entity_map = e['entities_%d' % hop]
@@ -543,6 +545,9 @@ def prediction_iterative_chain(cfg):
         avg_hit_at_one += hit_at_one
         total_hit_at_one += 1
         e['pred_answers'] = final_answers
+
+        if hit_at_one == 0:
+            print()
     print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
     print('avg_precision', avg_precision / total_hit_at_one)
     print('avg_recall', avg_recall / total_hit_at_one)
