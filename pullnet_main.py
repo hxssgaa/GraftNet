@@ -10,6 +10,7 @@ from relreasoner_order import RelOrderReasoner
 from relreasoner_entity import EntityRelReasoner
 from relreasoner_data_loader import RelReasonerDataLoader
 from relreasoner_object_data_loader import RelReasonerObjectDataLoader
+from transformers import AdamW
 from fpnet import FactsPullNet
 from util import *
 import matplotlib.pyplot as plt
@@ -53,7 +54,7 @@ def train_answer_prediction(cfg):
     # create model & set parameters
     my_model = get_model(trainable_entities, facts, entity2id, relation2id, cfg, valid_data.num_kb_relation, len(entity2id), len(word2id), T)
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
-    optimizer = torch.optim.Adam(trainable_parameters, lr=cfg['learning_rate'])
+    optimizer = AdamW(trainable_parameters, lr=cfg['learning_rate'])
 
     best_dev_acc = 0.0
 
@@ -708,7 +709,7 @@ def get_relreasoner_model(cfg, num_hop, num_kb_relation, num_entities, num_vocab
         if cfg['load_fpnet_model_file'] is not None:
             print('loading model from', cfg['load_fpnet_model_file'])
             pretrained_model_states = torch.load(cfg['load_fpnet_model_file'])
-            if word_emb_file is not None:
+            if word_emb_file is not None and 'word_embedding.weight' in pretrained_model_states:
                 del pretrained_model_states['word_embedding.weight']
             my_model.load_state_dict(pretrained_model_states, strict=False)
     else:

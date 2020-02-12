@@ -33,13 +33,13 @@ class RelReasoner(nn.Module):
             print('loaded relation_emb')
             self.relation_embedding.weight.requires_grad = False
 
-        self.word_embedding = nn.Embedding(num_embeddings=num_word + 1, embedding_dim=word_dim, padding_idx=num_word)
-        if pretrained_word_embedding_file is not None:
-            self.word_embedding.weight = nn.Parameter(
-                torch.from_numpy(np.pad(np.load(pretrained_word_embedding_file), ((0, 1), (0, 0)), 'constant')).type(
-                    'torch.FloatTensor'))
-            self.word_embedding.weight.requires_grad = False
-            print('load word emb')
+        # self.word_embedding = nn.Embedding(num_embeddings=num_word + 1, embedding_dim=word_dim, padding_idx=num_word)
+        # if pretrained_word_embedding_file is not None:
+        #     self.word_embedding.weight = nn.Parameter(
+        #         torch.from_numpy(np.pad(np.load(pretrained_word_embedding_file), ((0, 1), (0, 0)), 'constant')).type(
+        #             'torch.FloatTensor'))
+        #     self.word_embedding.weight.requires_grad = False
+        #     print('load word emb')
 
         self.relation_linear = nn.Linear(in_features=word_dim, out_features=entity_dim)
         # self.eod_linear1 = nn.Linear(in_features=entity_dim * 2, out_features=entity_dim)
@@ -58,6 +58,9 @@ class RelReasoner(nn.Module):
         self.sigmoid = nn.Sigmoid()
         # self.batch_norm = use_cuda(torch.nn.BatchNorm1d(word_dim if num_hop == 2 else 300))
         self.softmax_d1 = nn.Softmax(dim=1)
+        # MaxPooling
+        self.question_max_pool1d = torch.nn.MaxPool1d(kernel_size=20)
+        self.seed_type_max_pool1d = torch.nn.MaxPool1d(kernel_size=3)
         # dropout
         self.lstm_drop = nn.Dropout(p=lstm_dropout)
         self.linear_drop = nn.Dropout(p=0.2)
@@ -65,7 +68,12 @@ class RelReasoner(nn.Module):
         self.bce_loss = nn.BCEWithLogitsLoss()
         self.relu = nn.ReLU()
         # self.max_pooling = nn.MaxPool1d()
-        # self.bert_model = use_cuda(BertModel.from_pretrained('bert-base-uncased'))
+        self.question_encoder = use_cuda(RobertaModel.from_pretrained('roberta-base'))
+        self.subject_encoder =  use_cuda(RobertaModel.from_pretrained('roberta-base'))
+        # self.subject_encoder.embeddings.requires_grad = False
+        self.question_bert_linear = torch.nn.Linear(in_features=768, out_features=entity_dim)
+        self.subject_bert_linear = torch.nn.Linear(in_features=768, out_features=entity_dim)
+        self.relation_bert_linear = torch.nn.Linear(in_features=768, out_features=entity_dim)
 
         # self.node_linear1 = nn.Linear(in_features=entity_dim, out_features=entity_dim // 2)
         # self.node_linear2 = nn.Linear(in_features=entity_dim // 2, out_features=entity_dim // 4)
@@ -91,22 +99,30 @@ class RelReasoner(nn.Module):
             answer_dist = use_cuda(
                 Variable(torch.from_numpy(answer_dist).type('torch.FloatTensor')))
         # # encode query
-        # query_node_emb = self.bert_model(query_text)[0]
-        #
-        # local_rel_emb = self.bert_model(relation_text)[0]
-        query_word_emb = self.word_embedding(query_text)  # batch_size, max_query_word, word_dim
-        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb),
-                                                                  self.init_hidden(self.num_lstm_layer, batch_size,
-                                                                                   self.entity_dim))  # 1, batch_size, entity_dim
-        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
-        query_node_emb = query_node_emb[-1]
-        query_node_emb = query_node_emb.view(batch_size, -1, 1)
+        query_node_emb = self.question_encoder(query_text)[0]
+        query_node_emb = self.question_max_pool1d(query_node_emb.view(batch_size, query_node_emb.shape[2], -1))
+        query_node_emb = self.question_bert_linear(query_node_emb.squeeze(2)).unsqueeze(2)
 
-        seed_entity_types_emb = self.word_embedding(seed_entity_types)
-        _, (seed_entity_types_hidden_emb, _) = self.seed_type_encoder(self.lstm_drop(seed_entity_types_emb),
-                                                                      self.init_hidden(1, batch_size,
-                                                                                       self.entity_dim))
-        seed_entity_types_hidden_emb = seed_entity_types_hidden_emb.view(batch_size, -1, 1)
+        # -----------------------Original------------------------------
+        # query_word_emb = self.word_embedding(query_text)  # batch_size, max_query_word, word_dim
+        # query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb),
+        #                                                           self.init_hidden(self.num_lstm_layer, batch_size,
+        #                                                                            self.entity_dim))  # 1, batch_size, entity_dim
+        # query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
+        # query_node_emb = query_node_emb[-1]
+        # query_node_emb = query_node_emb.view(batch_size, -1, 1)
+        #
+        # seed_entity_types_emb = self.word_embedding(seed_entity_types)
+        # _, (seed_entity_types_hidden_emb, _) = self.seed_type_encoder(self.lstm_drop(seed_entity_types_emb),
+        #                                                               self.init_hidden(1, batch_size,
+        #                                                                                self.entity_dim))
+        # seed_entity_types_hidden_emb = seed_entity_types_hidden_emb.view(batch_size, -1, 1)
+        # ---------------------------------------------------------------
+
+        seed_entity_types_hidden_emb = self.subject_encoder(seed_entity_types)[0]
+        seed_entity_types_hidden_emb = self.seed_type_max_pool1d(seed_entity_types_hidden_emb.view(batch_size, seed_entity_types_hidden_emb.shape[2], -1))
+        seed_entity_types_hidden_emb = self.subject_bert_linear(seed_entity_types_hidden_emb.squeeze(2)).unsqueeze(2)
+
         question_seed_entity = torch.cat((query_node_emb, seed_entity_types_hidden_emb), 2).view(batch_size, 2, -1)
 
         _, (question_seed_entity_hidden_emb, _) = self.question_seed_encoder(question_seed_entity,
@@ -115,19 +131,10 @@ class RelReasoner(nn.Module):
 
         question_seed_entity_hidden_emb = question_seed_entity_hidden_emb.view(batch_size, -1, 1)
 
-        # ----------------------Original----------------------
-        # relation_text = relation_text.view(-1, relation_text.shape[3])
-        # rel_word_emb = self.word_embedding(relation_text)
-        # _, (rel_hidden_emb, _) = self.relation_encoder(self.lstm_drop(rel_word_emb),
-        #                                                self.init_hidden(self.num_lstm_layer, relation_text.shape[0],
-        #                                                                 self.entity_dim))
-        # rel_hidden_emb = rel_hidden_emb[-1]
-        # rel_hidden_emb = rel_hidden_emb.view(batch_size, max_rel_paths, -1, max_rel_num)
-        # rel_hidden_emb = self.relation_weight(rel_hidden_emb).squeeze(3)
-        # ----------------------Original----------------------
 
         local_rel_emb = self.relation_embedding(local_kb_rel_path_rels)
         local_rel_emb = local_rel_emb.view(-1, local_rel_emb.shape[2], local_rel_emb.shape[3])
+        local_rel_emb = self.relation_bert_linear(local_rel_emb)
         local_rel_hidden_emb, (local_rel_node_emb, _) = self.relation_encoder(self.lstm_drop(local_rel_emb),
                                                                               self.init_hidden(self.num_lstm_layer,
                                                                                                local_rel_emb.shape[0],

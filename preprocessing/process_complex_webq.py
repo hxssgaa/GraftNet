@@ -5,7 +5,9 @@ from string import punctuation
 import numpy as np
 import wordninja
 import pickle as pkl
+import torch
 from tqdm import tqdm
+from transformers import *
 # from preprocessing.use_helper import UseVector
 
 RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
@@ -232,9 +234,72 @@ def process_relation_embedding(embedding_file, use_f=True):
     return relation_emb
 
 
+def process_bert_relation_embedding(use_f=True):
+    word_to_relation = {}
+    relation_lens = {}
+    relation_encoder = BertModel.from_pretrained('bert-base-uncased').cuda()
+    relation_tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+
+    def _add_word(word, t, v):
+        if word not in word_to_relation:
+            word_to_relation[word] = []
+        word_to_relation[word].append((v, t))
+        if v not in relation_lens:
+            relation_lens[v] = 0
+        relation_lens[v] += t
+
+    def is_float(value):
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
+
+    with open(RELATIONS_FILE) as f:
+        relations = f.readlines()
+    relation_emb = dict()
+    for ii, line in tqdm(enumerate(relations)):
+        relation = line.strip()
+        if relation in ["GreaterThan", "LessThan", "NotEquals"]:
+            print(relation)
+            relation = 'common.' + relation + '.object'
+        elif relation.count('.') < 2:
+            print(relation)
+            relation = 'common.notable_for.object'
+
+        relation = torch.tensor(relation_tokenizer.encode(relation)).unsqueeze(0).cuda()
+        r_emb = relation_encoder(relation)[0]
+        r_emb = r_emb.view(768, 1, relation.shape[1])
+        r_emb = torch.avg_pool1d(kernel_size=relation.shape[1], input=r_emb).squeeze(1).squeeze(1).cpu().detach().numpy()
+        relation_emb[relation] = r_emb
+
+    # with open(embedding_file) as f:
+    #     for line in tqdm(f):
+    #         spt_line = line.strip().split()
+    #         for idx_e, e in enumerate(spt_line):
+    #             if is_float(e):
+    #                 word, vec = ' '.join(spt_line[:idx_e]), ' '.join(spt_line[idx_e:])
+    #                 if word in word_to_relation:
+    #                     for rid, typ in word_to_relation[word]:
+    #                         relation_emb[rid] += typ * np.array(
+    #                             [float(vv) for vv in vec.split()])
+    #                 break
+
+    # for relation in relation_emb:
+    #     relation_emb[relation] = relation_emb[relation] / relation_lens[relation]
+
+    # Filter relations which are not included in the vocabulary at
+    # relation_emb = {k: v for k, v in relation_emb.items() if np.average(v) != 0}
+    relation_emb_npy = np.array([relation_emb[rel.strip()] if rel.strip() in relation_emb else np.random.uniform(-1, 1, 768) for rel in relations])
+
+    # pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
+    np.save('datasets/complexwebq/relation_emb_768d.npy', relation_emb_npy)
+    return relation_emb
+
+
 if __name__ == '__main__':
-    # result = process_relation_embedding('datasets/complexwebq/glove.840B.300d.txt', False)
-    process_vocab('datasets/complexwebq/glove.840B.300d.txt')
+    result = process_bert_relation_embedding()
+    # process_vocab('datasets/complexwebq/glove.840B.300d.txt')
     # process_entities()
     # process_vocab('datasets/complexwebq/glove.6B.200d.txt')
 

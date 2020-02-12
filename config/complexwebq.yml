@@ -10,7 +10,7 @@ entity2id: 'entities_v2.txt'
 word_emb_file: "word_emb_300d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_300d.npy"
+relation_emb_file: "relation_emb_768d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 fact_data: "datasets/complexwebq/all_facts_all_new2.json"
 
@@ -19,8 +19,8 @@ to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid2"
 pred_file: "model/complexwebq/pred_hybrid"
 load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner_14_4"
-load_fpnet_model_file: "model/complexwebq/best_relreasoner_14_3"
+save_fpnet_model_file: "model/complexwebq/best_relreasoner_15_1"
+load_fpnet_model_file: #"model/complexwebq/best_relreasoner_15_1"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 load_entity_model_file:
 
@@ -32,7 +32,7 @@ use_doc: False
 num_layer: 3
 max_query_word: 20
 max_document_word: 50
-num_hop: 4
+num_hop: 1
 
 entity_dim: 300
 word_dim: 300

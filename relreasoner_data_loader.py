@@ -7,6 +7,7 @@ from util import load_json
 from preprocessing.process_complex_webq import clean_text
 from collections import defaultdict
 from nltk.corpus import stopwords
+from transformers import *
 
 
 MAX_FACTS = 500
@@ -28,6 +29,7 @@ class RelReasonerDataLoader():
         self.max_rel_num = 3
         self.max_seed_entities = 10
         self.max_type_word = 3
+        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 
         self.data = []
         self.origin_data = []
@@ -61,10 +63,10 @@ class RelReasonerDataLoader():
         self.reverse_relation2id = {v: k for k, v in relation2id.items()}
 
         print('preparing data ...')
-        self.seed_entity_types = np.full((self.num_data, self.max_type_word), len(self.word2id), dtype=int)
+        self.seed_entity_types = np.full((self.num_data, self.max_type_word), self.tokenizer.unk_token_id, dtype=int)
         self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel, self.num_hop), len(self.relation2id), dtype=int)
         self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.max_rel_num, self.max_query_word), len(self.word2id), dtype=int)
-        self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
+        self.query_texts = np.full((self.num_data, self.max_query_word), self.tokenizer.unk_token_id, dtype=int)
         self.answer_dists = np.zeros((self.num_data, self.max_local_path_rel), dtype=float)
 
         self._prepare_data()
@@ -153,8 +155,6 @@ class RelReasonerDataLoader():
             #             rel_ids.add(rel_id_tuple)
 
             # build seed entity types
-            total_words = 0
-            known_words = 0
             seed_entity_type = None
             if seed_entity in self.features:
                 if 'prom_types' in self.features[seed_entity] and self.features[seed_entity]['prom_types']:
@@ -165,16 +165,15 @@ class RelReasonerDataLoader():
                         if isinstance(self.features[seed_entity]['types'], list) else self.features[seed_entity]['types']
                 if seed_entity_type:
                     seed_entity_type = seed_entity_type.split('.')[-1].split('_')
+                    seed_entity_type = self.tokenizer.encode(seed_entity_type)
                     for idx, word in enumerate(seed_entity_type):
                         if idx >= self.max_type_word:
                             break
-                        if word in self.word2id:
-                            self.seed_entity_types[next_id, idx] = self.word2id[word]
-                            known_words += 1
-                        else:
-                            self.seed_entity_types[next_id, idx] = self.word2id['__unk__']
-                        total_words += 1
-            avg_total_words_recall += ((known_words / total_words) if total_words > 0 else 1)
+                        # if word in self.word2id:
+                        #     self.seed_entity_types[next_id, idx] = self.word2id[word]
+                        # else:
+                        #     self.seed_entity_types[next_id, idx] = self.word2id['__unk__']
+                        self.seed_entity_types[next_id, idx] = word
 
             # get a list of relation candidate paths
             # for i, rel in enumerate(rel_ids):
@@ -251,15 +250,22 @@ class RelReasonerDataLoader():
                 # question_word_spt = [e[0] for e in parsed if e[1] in KEEP_TAG]
                 cache_question[sample['question']] = question_word_spt
             count_query_length[len(question_word_spt)] += 1
+            question_word_spt = self.tokenizer.encode(question_word_spt)
+            recall = 0
             for j, word in enumerate(question_word_spt):
                 if j < self.max_query_word:
-                    if word in self.word2id:
-                        self.query_texts[next_id, j] = self.word2id[word]
-                    else:
-                        self.query_texts[next_id, j] = self.word2id['__unk__']
+                    # if word in self.word2id:
+                    #     self.query_texts[next_id, j] = self.word2id[word]
+                    # else:
+                    #     self.query_texts[next_id, j] = self.word2id['__unk__']
+                    self.query_texts[next_id, j] = word
+                    if word != self.tokenizer.unk_token_id:
+                        recall += 1
+            recall /= min(self.max_query_word, len(question_word_spt))
+            avg_total_words_recall += recall
 
             next_id += 1
-        # print(avg_total_words_recall / len(self.data))
+        print(avg_total_words_recall / len(self.data))
         # print('asdasdasdas')
 
     def _build_local_tuples(self, seeds, answers):
