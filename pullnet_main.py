@@ -197,7 +197,7 @@ def inference_answer(facts, questions):
     return avg_hit_at_one / len(questions), avg_recall / len(questions), avg_f1 / len(questions)
 
 
-def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2id, reverse_relation2id, cfg, T=3, facts=None, num_hop=None, is_train=True, is_order=False, log_info=False):
+def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2id, reverse_relation2id, cfg, T=3, facts=None, num_hop=None, is_train=True, is_order=False, log_info=False, include_eod=True):
     # Evaluation
     # test_batch_size = 1
     my_model.eval()
@@ -282,14 +282,14 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
             top_relation = rel_mapping_dict[k][-1]
             next_entities_set = set()
             for entity in entities:
-                if top_relation != 'EOD' and top_relation in facts[entity]:
+                if top_relation != 'EOD' and entity in facts and top_relation in facts[entity]:
                     next_entities_set.update(set(facts[entity][top_relation].keys()))
             next_entities[k] = next_entities_set
 
-        ground_truth_next_all_entities = set()
-        for gt in sample['ground_truth_path']:
-            if num_hop * 2 < len(gt):
-                ground_truth_next_all_entities.add(gt[num_hop * 2])
+        # ground_truth_next_all_entities = set()
+        # for gt in sample['ground_truth_path']:
+        #     if num_hop * 2 < len(gt):
+        #         ground_truth_next_all_entities.add(gt[num_hop * 2])
         # Choose intersection of next predicting entities from each topic entity path.
         next_entity_map_items = list(next_entities.items())
         for i in range(len(next_entity_map_items)):
@@ -312,6 +312,11 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
                     next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
                     next_entity_map_items[j] = (next_entity_map_items[j][0], vj)
         next_entities = {k: v for k, v in next_entity_map_items}
+        visited_entities = set()
+        for prev_hop in range(1, num_hop):
+            if ('entities_%d' % prev_hop) in sample:
+                visited_entities.update(sample['entities_%d' % prev_hop])
+        next_entities = {k: {vv for vv in v if vv not in visited_entities} for k, v in next_entities.items()}
         sample['entities_%d' % num_hop] = next_entities
         cands_map = dict()
         for k in next_entities:
@@ -321,7 +326,8 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
             for entity in entities:
                 rel_cands.update(list(facts[entity].keys()))
             rel_cands = set(list(rel_cands)[:300])
-            rel_cands.add('EOD')
+            if include_eod:
+                rel_cands.add('EOD')
             rel_cands = list(filter(lambda x: x not in block_rels, rel_cands))
             rel_cands = [cur_relation_chain + [k] for k in rel_cands]
             cands_map[k] = rel_cands
@@ -394,7 +400,6 @@ def train_relreasoner(cfg, is_entity=False):
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     num_hop = cfg['num_hop']
 
-
     if not is_entity:
         train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, features, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, teacher_force=True)
@@ -403,10 +408,10 @@ def train_relreasoner(cfg, is_entity=False):
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, teacher_force=False)
     else:
         train_data = RelReasonerObjectDataLoader(cfg['data_folder'] + cfg['train_data'], facts, features, num_hop,
-                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 10, teacher_force=True)
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, teacher_force=True)
 
         valid_data = RelReasonerObjectDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, features, num_hop,
-                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 10)
+                                           word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
     my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, len(entity2id), len(word2id), is_entity=is_entity)
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
@@ -463,17 +468,25 @@ def train_relreasoner(cfg, is_entity=False):
 
 
 def prediction_iterative_chain(cfg):
-    facts = load_json(cfg['fact_data'])
+    facts = load_fact(cfg['fact_data'])
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
     entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
     reverse_relation2id = {v: k for k, v in relation2id.items()}
-    T = 4
-    load_model_files = ['model/complexwebq/best_relreasoner_14_1',
-                        'model/complexwebq/best_relreasoner_14_2',
-                        'model/complexwebq/best_relreasoner_14_3',
-                        'model/complexwebq/best_relreasoner_14_4',
+    T = cfg['num_hop']
+    include_eod = cfg['eod'] if 'eod' in cfg else True
+    # load_model_files = ['model/complexwebq/best_relreasoner_14_1',
+    #                     'model/complexwebq/best_relreasoner_14_2',
+    #                     'model/complexwebq/best_relreasoner_14_3',
+    #                     'model/complexwebq/best_relreasoner_14_4',
+    #                     ]
+    # load_model_files = ['model/webqsp/best_relreasoner_1_1',
+    #                     'model/webqsp/best_relreasoner_1_2',
+    #                     ]
+    load_model_files = ['model/wikimovie/best_relreasoner1_1',
+                        'model/wikimovie/best_relreasoner1_2',
+                        'model/wikimovie/best_relreasoner1_3',
                         ]
 
     prev_data = None
@@ -486,7 +499,7 @@ def prediction_iterative_chain(cfg):
         my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
 
         eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, relation2id, reverse_relation2id,
-                                            cfg, T=T, is_train=False, facts=facts, num_hop=num_hop)
+                                            cfg, T=T, is_train=False, facts=facts, num_hop=num_hop, include_eod=include_eod)
 
         prev_data = test_data.origin_data
 

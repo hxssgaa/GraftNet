@@ -21,7 +21,7 @@ class RelReasoner(nn.Module):
         self.num_word = num_word
         self.entity_dim = entity_dim
         self.word_dim = word_dim
-        self.num_lstm_layer = 3
+        self.num_lstm_layer = 2
         self.train_eod = False
 
         self.relation_embedding = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=word_dim,
@@ -102,6 +102,7 @@ class RelReasoner(nn.Module):
         query_node_emb = query_node_emb[-1]
         query_node_emb = query_node_emb.view(batch_size, -1, 1)
 
+        #-------------------------Preserved-----------------------------------
         seed_entity_types_emb = self.word_embedding(seed_entity_types)
         _, (seed_entity_types_hidden_emb, _) = self.seed_type_encoder(self.lstm_drop(seed_entity_types_emb),
                                                                       self.init_hidden(1, batch_size,
@@ -114,6 +115,7 @@ class RelReasoner(nn.Module):
                                                                                               self.entity_dim))
 
         question_seed_entity_hidden_emb = question_seed_entity_hidden_emb.view(batch_size, -1, 1)
+        # -------------------------Preserved-----------------------------------
 
         # ----------------------Original----------------------
         # relation_text = relation_text.view(-1, relation_text.shape[3])
@@ -140,7 +142,7 @@ class RelReasoner(nn.Module):
         div = float(np.sqrt(self.entity_dim))
         local_rel_emb = self.relation_linear(local_rel_node_emb)
 
-        rel_score = local_rel_emb @ question_seed_entity_hidden_emb
+        rel_score = local_rel_emb @ query_node_emb
         rel_score = (rel_score / div).squeeze(2) + (1 - local_kb_rel_path_rels_mask) * VERY_NEG_NUMBER
 
         loss = self.bce_loss(rel_score, answer_dist)

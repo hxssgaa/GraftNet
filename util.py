@@ -275,6 +275,8 @@ def save_json(list_, name):
 
 
 def load_json(file):
+    if not file:
+        return None
     try:
         with open(file, 'r') as f:
             data = json.load(f)
@@ -291,8 +293,8 @@ def load_fact(file):
             triple = line.split('|')
             triple = list(map(str.strip, triple))
             s, p, o = triple
-            s = s.replace('%', '')
-            o = o.replace('%', '')
+            # s = s.replace('%', '')
+            # o = o.replace('%', '')
             if s not in kb:
                 kb[s] = dict()
             if p not in kb[s]:

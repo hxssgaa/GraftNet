@@ -39,6 +39,8 @@ class RelReasonerDataLoader():
             f_in = load_json(data_file)
             f_in = f_in[:len(f_in)//div]
         for line in tqdm(f_in):
+            if 'rel_chain_map' not in line or not line['rel_chain_map'] or not line['answers']:
+                continue
             self.origin_data.append(line)
             rel_chain_map = line['rel_chain_map'][str(self.num_hop)]
             for k, v in rel_chain_map.items():
@@ -69,38 +71,6 @@ class RelReasonerDataLoader():
 
         self._prepare_data()
 
-    def get_gt_constraint_rels(self, q, num_hop, no_compare_seed=False):
-        if num_hop == 1:
-            gt_constraint_rels = set((e[1],) for e in q['ground_truth_path'] if (num_hop - 1) * 2 < len(e)
-                                     and num_hop * 2 - 1 < len(e) and (e[(num_hop - 1) * 2] == q['seed_entity'] or no_compare_seed))
-        elif num_hop == 2:
-            gt_constraint_rels = set((e[1], e[3]) for e in q['ground_truth_path'] if (num_hop - 1) * 2 < len(e)
-                                     and num_hop * 2 - 1 < len(e) and (e[(num_hop - 1) * 2] == q['seed_entity'] or no_compare_seed))
-        elif num_hop == 3:
-            gt_constraint_rels = set((e[1], e[3], e[5]) for e in q['ground_truth_path'] if (num_hop - 1) * 2 < len(e)
-                                     and num_hop * 2 - 1 < len(e) and (e[(num_hop - 1) * 2] == q['seed_entity'] or no_compare_seed))
-        else:
-            gt_constraint_rels = None
-        return gt_constraint_rels
-
-    def resample_multi_rels(self, q, num_hop, prev_rels):
-        if 'ground_truth_map' not in q:
-            return
-        constraint_rels = set(self.facts[q['seed_entity']].keys())
-        filter_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
-        constraint_rels -= filter_rels
-        gt_constraint_rels = self.get_gt_constraint_rels(q, num_hop)
-        if not constraint_rels:
-            constraint_rels = {'EOD'}
-        if prev_rels:
-            constraint_rels = set([tuple(prev_rels + [e2]) for e2 in constraint_rels])
-        # TODO: FIXTHIS for multi-hop
-        if num_hop - 1 < len(q['rel_cands_multi']):
-            q['rel_cands_multi'][num_hop - 1] = list(gt_constraint_rels)
-            if not gt_constraint_rels:
-                del q['rel_cands_multi'][num_hop - 1]
-        q['rel_cands_multi_cands%d' % num_hop] = list(constraint_rels)
-
     def _prepare_data(self):
         """
         global2local_entity_maps: a map from global entity id to local entity id
@@ -110,19 +80,10 @@ class RelReasonerDataLoader():
         count_query_length = [0] * 50
         cache_question = {}
 
-        # for rel in self.relation2id:
-        #     idx_rel = self.relation2id[rel]
-        #     rel_word_spt = clean_text(rel)
-        #     for j, word in enumerate(rel_word_spt):
-        #         if j < self.max_query_word:
-        #             if word in self.word2id:
-        #                 self.relation_texts[idx_rel, j] = self.word2id[word]
-        #             else:
-        #                 self.relation_texts[idx_rel, j] = self.word2id['__unk__']
-
         question_word_list = 'who, when, what, where, how, which, why, whom, whose, the'.split(', ')
         stop_words = set(stopwords.words("english"))
         avg_total_words_recall = 0.0
+        avg_question_words_recall = 0.0
         for idx_q, sample in tqdm(enumerate(self.data)):
             # build answers
             rel_ids = set()
@@ -133,24 +94,6 @@ class RelReasonerDataLoader():
                 for each_gt in gt:
                     rel_id = tuple([self.relation2id[r] for r in each_gt])
                     rel_ids.add(rel_id)
-
-            # if 'rel_cands_multi' in sample:
-            #     if self.num_hop - 1 < len(sample['rel_cands_multi']):
-            #         for rel in sample['rel_cands_multi'][self.num_hop - 1]:
-            #             rel_ids.add(tuple([self.relation2id[r] for r in rel]))
-            #     else:
-            #         prev_rels = set()
-            #         if len(sample['rel_cands_multi']) > self.num_hop - 2 and self.num_hop > 1:
-            #             for rel in sample['rel_cands_multi'][self.num_hop - 2]:
-            #                 prev_rels.add(tuple(rel))
-            #         elif len(sample['rel_cands_multi']) > self.num_hop - 3 and self.num_hop > 2:
-            #             for rel in sample['rel_cands_multi'][self.num_hop - 3]:
-            #                 prev_rels.add(tuple(rel))
-            #         for prev_rel in prev_rels:
-            #             rel_id_tuple = tuple([self.relation2id[r] for r in prev_rel] + [self.relation2id['EOD']])
-            #             if len(rel_id_tuple) < self.num_hop:
-            #                 rel_id_tuple = tuple(list(rel_id_tuple) + [self.relation2id['EOD']] * (self.num_hop - len(rel_id_tuple)))
-            #             rel_ids.add(rel_id_tuple)
 
             # build seed entity types
             total_words = 0
@@ -176,36 +119,7 @@ class RelReasonerDataLoader():
                         total_words += 1
             avg_total_words_recall += ((known_words / total_words) if total_words > 0 else 1)
 
-            # get a list of relation candidate paths
-            # for i, rel in enumerate(rel_ids):
-            #     self.local_kb_rel_path_rels[idx_q][i] = rel
-            #     self.answer_dists[idx_q][i] = 1.0
-            #
-            # rel_cands = sample['rel_cands_multi_cands']
-            # for i in range(len(rel_ids), min(self.max_local_path_rel, len(rel_cands))):
-            #     self.local_kb_rel_path_rels[idx_q][i] = self.relation2id[rel_cands[i]]
-
             rel_cands = sample['rel_chain_cands']
-            # if self.num_hop > 1:
-            #     prev_hop_rels = set()
-            #     for e in rel_cands:
-            #         prev_hop_rels.add(tuple(e[:self.num_hop - 1]))
-            #     for e in prev_hop_rels:
-            #         rel_cands.insert(0, list(e) + ['EOD'])
-            #     if not rel_cands and 'relation_pred2' in sample:
-            #         rel_cands = [list(sample['relation_pred2']) + ['EOD']]
-
-            # # filtering invalid cands
-            # rel_cands = [e for e in rel_cands if (e[-1] not in (
-            #     'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals',
-            #     'rdf-schema#domain', 'rdf-schema#range') and
-            #                                       not e[-1].startswith('freebase.'))]
-
-            # if self.teacher_force:
-            #     rel_cands_set = list(gt_rels | set(rel_cands[:self.max_local_path_rel - len(gt_rels)]))
-            #     rel_cands = rel_cands_set
-            # else:
-            #     self.max_local_path_rel = 300
 
             for i in range(min(len(rel_cands), self.max_local_path_rel)):
                 for j in range(self.num_hop):
@@ -216,16 +130,6 @@ class RelReasonerDataLoader():
 
             if np.sum(self.answer_dists[idx_q]) == 0:
                 pass
-
-            # if np.sum(self.answer_dists[idx_q]) == 0:
-            #     print('wow')
-
-            # for i in range(len(rel_cands)):
-            #     rel_cand = list(map(self.relation2id.get, rel_cands[i]))
-            #     if tuple(rel_cand) in rel_ids:
-            #         self.answer_dists[idx_q][i] = 1.0
-            #     for hop in range(self.num_hop):
-            #         self.local_kb_rel_path_rels[idx_q][i][hop] = rel_cand[hop]
 
             stop_words.update(question_word_list)
 
@@ -251,142 +155,26 @@ class RelReasonerDataLoader():
                 # question_word_spt = [e[0] for e in parsed if e[1] in KEEP_TAG]
                 cache_question[sample['question']] = question_word_spt
             count_query_length[len(question_word_spt)] += 1
+            avg_qw_recall = 0
             for j, word in enumerate(question_word_spt):
                 if j < self.max_query_word:
                     if word in self.word2id:
                         self.query_texts[next_id, j] = self.word2id[word]
+                        avg_qw_recall += 1
                     else:
                         self.query_texts[next_id, j] = self.word2id['__unk__']
-
+            avg_qw_recall /= len(question_word_spt)
             next_id += 1
-        # print(avg_total_words_recall / len(self.data))
-        # print('asdasdasdas')
+            avg_question_words_recall += avg_qw_recall
+        print('avg_total_words_recall', avg_total_words_recall / len(self.data))
+        print('avg_question_words_recall', avg_question_words_recall / len(self.data))
 
-    def _build_local_tuples(self, seeds, answers):
-        # relations in local KB
-        tuples = set()
-        entities = set()
-        if self.teacher_force:
-            for entity in seeds:
-                entities.add(entity)
-                for answer in answers:
-                    if isinstance(answer, dict):
-                        answer = answer['text']
-                    if answer in self.facts[entity]:
-                        entities.add(answer)
-                        rel, direction = self.facts[entity][answer]
-                        if direction == 0:
-                            tuples.add((entity, rel, answer))
-                        else:
-                            tuples.add((answer, rel, entity))
-
-        flag = False
-        for entity in seeds:
-            if flag:
-                break
-            for neighbor in list(self.facts[entity].keys()):
-                rel, direction = self.facts[entity][neighbor]
-                if len(tuples) >= MAX_FACTS:
-                    flag = True
-                    break
-                entities.add(neighbor)
-                if direction == 0:
-                    tuples.add((entity, rel, neighbor))
-                else:
-                    tuples.add((neighbor, rel, entity))
-
-        return {'entities': list(entities), 'tuples': list(tuples)}
-
-    def build_relreasoner_data(self, data_file):
-        res = []
-        f_in = load_json(data_file)
-        f_in = f_in[:len(f_in)]
-        for line in tqdm(f_in):
-            seed2next = defaultdict(list)
-            for path in line['path']:
-                if len(path) >= 3:
-                    seed2next[path[1]].append(path[2])
-
-            for seed in seed2next:
-                answers = seed2next[seed]
-                seeds = [seed]
-                seeds = list(map(lambda x: x.replace('%', ''), seeds))
-                p_data = line.copy()
-                p_data['entities'] = seeds
-                p_data['answers'] = answers
-                p_data['hop'] = 0
-                p_data['subgraph'] = self._build_local_tuples(seeds, answers)
-                self.max_facts = max(self.max_facts, 2 * len(p_data['subgraph']['tuples']))
-                res.append(p_data)
-        return np.array(res)
 
     def reset_batches(self, is_sequential=True):
         if is_sequential:
             self.batches = np.arange(self.num_data)
         else:
             self.batches = np.random.permutation(self.num_data)
-
-    @staticmethod
-    def _add_entity_to_map(entity2id, entities, g2l):
-        for entity in entities:
-            if isinstance(entity, dict):
-                entity_text = entity['text']
-            else:
-                entity_text = entity
-            entity_global_id = entity2id[entity_text]
-            if entity_global_id not in g2l:
-                g2l[entity2id[entity_text]] = len(g2l)
-
-    def _build_global2local_entity_maps(self):
-        """Create a map from global entity id to local entity of each sample"""
-        global2local_entity_maps = [None] * self.num_data
-        total_local_entity = 0.0
-        next_id = 0
-        for sample in tqdm(self.data):
-            g2l = dict()
-            self._add_entity_to_map(self.entity2id, sample['entities'], g2l)
-            # construct a map from global entity id to local entity id
-            self._add_entity_to_map(self.entity2id, sample['subgraph']['entities'], g2l)
-
-            global2local_entity_maps[next_id] = g2l
-            total_local_entity += len(g2l)
-            self.max_local_entity = max(self.max_local_entity, len(g2l))
-            next_id += 1
-        print('avg local entity: ', total_local_entity / next_id)
-        return global2local_entity_maps
-
-
-    def _build_kb_adj_mat(self, sample_ids, fact_dropout):
-        """Create sparse matrix representation for batched data"""
-        mats0_batch = np.array([], dtype=int)
-        mats0_0 = np.array([], dtype=int)
-        mats0_1 = np.array([], dtype=int)
-        vals0 = np.array([], dtype=float)
-
-        mats1_batch = np.array([], dtype=int)
-        mats1_0 = np.array([], dtype=int)
-        mats1_1 = np.array([], dtype=int)
-        vals1 = np.array([], dtype=float)
-
-        for i, sample_id in enumerate(sample_ids):
-            (mat0_0, mat0_1, val0), (mat1_0, mat1_1, val1) = self.kb_adj_mats[sample_id]
-            assert len(val0) == len(val1)
-            num_fact = len(val0)
-            num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
-            mask_index = np.random.permutation(num_fact)[ : num_keep_fact]
-            # mat0
-            mats0_batch = np.append(mats0_batch, np.full(len(mask_index), i, dtype=int))
-            mats0_0 = np.append(mats0_0, mat0_0[mask_index])
-            mats0_1 = np.append(mats0_1, mat0_1[mask_index])
-            vals0 = np.append(vals0, val0[mask_index])
-            # mat1
-            mats1_batch = np.append(mats1_batch, np.full(len(mask_index), i, dtype=int))
-            mats1_0 = np.append(mats1_0, mat1_0[mask_index])
-            mats1_1 = np.append(mats1_1, mat1_1[mask_index])
-            vals1 = np.append(vals1, val1[mask_index])
-
-        return (mats0_batch, mats0_0, mats0_1, vals0), (mats1_batch, mats1_0, mats1_1, vals1)
-
 
 
     def get_batch(self, iteration, batch_size, fact_dropout):
