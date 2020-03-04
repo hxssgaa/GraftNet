@@ -9,6 +9,7 @@ import torch
 from tqdm import tqdm
 from transformers import *
 # from preprocessing.use_helper import UseVector
+from util import load_dict
 
 RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
 OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb.pkl'
@@ -238,7 +239,8 @@ def process_bert_relation_embedding(use_f=True):
     word_to_relation = {}
     relation_lens = {}
     relation_encoder = BertModel.from_pretrained('bert-base-uncased').cuda()
-    relation_tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+    relation_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    word2id = load_dict('datasets/complexwebq/vocab.txt')
 
     def _add_word(word, t, v):
         if word not in word_to_relation:
@@ -267,7 +269,7 @@ def process_bert_relation_embedding(use_f=True):
             print(relation)
             relation = 'common.notable_for.object'
 
-        relation = torch.tensor(relation_tokenizer.encode(relation)).unsqueeze(0).cuda()
+        relation = torch.tensor([(word2id[e] if e in word2id else word2id['__unk__']) for e in clean_text(relation)]).unsqueeze(0).cuda()
         r_emb = relation_encoder(relation)[0]
         r_emb = r_emb.view(768, 1, relation.shape[1])
         r_emb = torch.avg_pool1d(kernel_size=relation.shape[1], input=r_emb).squeeze(1).squeeze(1).cpu().detach().numpy()

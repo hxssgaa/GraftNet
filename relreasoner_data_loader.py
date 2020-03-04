@@ -165,7 +165,7 @@ class RelReasonerDataLoader():
                         if isinstance(self.features[seed_entity]['types'], list) else self.features[seed_entity]['types']
                 if seed_entity_type:
                     seed_entity_type = seed_entity_type.split('.')[-1].split('_')
-                    seed_entity_type = self.tokenizer.encode(seed_entity_type)
+                    seed_entity_type = [(self.word2id[e] if e in self.word2id else self.word2id['__unk__']) for e in seed_entity_type]
                     for idx, word in enumerate(seed_entity_type):
                         if idx >= self.max_type_word:
                             break
@@ -250,7 +250,8 @@ class RelReasonerDataLoader():
                 # question_word_spt = [e[0] for e in parsed if e[1] in KEEP_TAG]
                 cache_question[sample['question']] = question_word_spt
             count_query_length[len(question_word_spt)] += 1
-            question_word_spt = self.tokenizer.encode(question_word_spt)
+            question_word_spt = [(self.word2id[e] if e in self.word2id else self.word2id['__unk__']) for e in
+                                 question_word_spt]
             recall = 0
             for j, word in enumerate(question_word_spt):
                 if j < self.max_query_word:
