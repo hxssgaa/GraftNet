@@ -6,7 +6,7 @@ dev_data: 'dev_new.json'
 dev_documents: 'documents.json'
 test_data: 'test_new.json'
 test_documents: 'documents.json'
-fact_data: "datasets/webqsp/facts_new2.json"
+fact_data: "datasets/webqsp/facts_new.json"
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
@@ -31,25 +31,25 @@ use_kb: True
 use_doc: False
 
 num_layer: 3
-max_query_word: 10
+max_query_word: 20
 max_document_word: 50
 num_hop: 2
 
 entity_dim: 300
 word_dim: 300
-kge_dim: 100
+kge_dim: 300
 pagerank_lambda: 0.8
 fact_scale: 3
 use_inverse_relation: False
 test_batch_size: 1
 
 # optimization
-num_epoch: 200
+num_epoch: 100
 batch_size: 10
 gradient_clip: 1
 learning_rate: 0.0001
-lstm_dropout: 0.3
-linear_dropout: 0.2
+lstm_dropout: 0.5
+linear_dropout: 0.4
 is_debug: False
 
 
