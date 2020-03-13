@@ -21,7 +21,7 @@ class RelReasoner(nn.Module):
         self.num_word = num_word
         self.entity_dim = entity_dim
         self.word_dim = word_dim
-        self.num_lstm_layer = 1
+        self.num_lstm_layer = 3
         self.train_eod = False
 
         self.relation_embedding = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=word_dim,
@@ -99,7 +99,7 @@ class RelReasoner(nn.Module):
                                                                   self.init_hidden(self.num_lstm_layer, batch_size,
                                                                                    self.entity_dim))  # 1, batch_size, entity_dim
         query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
-        # query_node_emb = query_node_emb[-1]
+        query_node_emb = query_node_emb[-1]
         query_node_emb = query_node_emb.view(batch_size, -1, 1)
 
         #-------------------------Preserved-----------------------------------
@@ -135,14 +135,14 @@ class RelReasoner(nn.Module):
                                                                                                local_rel_emb.shape[0],
                                                                                                self.entity_dim))
         local_rel_node_emb = local_rel_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
-        # local_rel_node_emb = local_rel_node_emb[-1]
+        local_rel_node_emb = local_rel_node_emb[-1]
         local_rel_node_emb = local_rel_node_emb.view(batch_size, max_rel_paths, -1)
 
         # Attention
         div = float(np.sqrt(self.entity_dim))
         local_rel_emb = self.relation_linear(local_rel_node_emb)
 
-        rel_score = local_rel_emb @ query_node_emb
+        rel_score = local_rel_emb @ question_seed_entity_hidden_emb
         rel_score = (rel_score / div).squeeze(2) + (1 - local_kb_rel_path_rels_mask) * VERY_NEG_NUMBER
 
         loss = self.bce_loss(rel_score, answer_dist)
