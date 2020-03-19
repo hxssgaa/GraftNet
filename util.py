@@ -122,22 +122,23 @@ def cal_accuracy(pred, answer_dist):
     num_f1 = 0.0
     num_answerable = 0.0
     for i, l in enumerate(pred):
-        num_hit_at_one += (answer_dist[i, l[0]] != 0)
-        precision = 0
-        for e in l:
-            precision += (answer_dist[i, e] != 0)
-        precision = float(precision) / len(l)
-        recall = 0
-        for j, answer in enumerate(answer_dist[i]):
-            if answer != 0 and j in l:
-                recall += 1
-        recall = float(recall) / np.sum(answer_dist[i]) if np.sum(answer_dist[i]) > 0 else 0
-        f1 = 0
-        if precision + recall > 0:
-            f1 = 2 * recall * precision / (precision + recall)
-        num_precision += precision
-        num_recall += recall
-        num_f1 += f1
+        num_hit_at_one += np.sum(l == answer_dist[i]) // l.shape[0]
+        # num_hit_at_one += (answer_dist[i, l[0]] != 0)
+        # precision = 0
+        # for e in l:
+        #     precision += (answer_dist[i, e] != 0)
+        # precision = float(precision) / len(l)
+        # recall = 0
+        # for j, answer in enumerate(answer_dist[i]):
+        #     if answer != 0 and j in l:
+        #         recall += 1
+        # recall = float(recall) / np.sum(answer_dist[i]) if np.sum(answer_dist[i]) > 0 else 0
+        # f1 = 0
+        # if precision + recall > 0:
+        #     f1 = 2 * recall * precision / (precision + recall)
+        # num_precision += precision
+        # num_recall += recall
+        # num_f1 += f1
     for i, dist in enumerate(answer_dist):
         if np.sum(dist) != 0:
             num_answerable += 1

@@ -8,8 +8,8 @@ import pickle as pkl
 from tqdm import tqdm
 # from preprocessing.use_helper import UseVector
 
-RELATIONS_FILE = 'datasets/complexwebq/relations.txt'
-OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb.pkl'
+RELATIONS_FILE = 'datasets/complexwebq/relations_decoder.txt'
+OUT_RELATIONS_EMBEDDING = 'datasets/complexwebq/relation_emb_decoder.pkl'
 QUESTION_FILE = 'datasets/complexwebq/questions/all_questions.json'
 WORD_DIM = 300
 
@@ -227,14 +227,14 @@ def process_relation_embedding(embedding_file, use_f=True):
     relation_emb = {k: v for k, v in relation_emb.items() if np.average(v) != 0}
     relation_emb_npy = np.array([relation_emb[rel.strip()] if rel.strip() in relation_emb else np.random.uniform(-1, 1, 300) for rel in relations])
 
-    pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
-    np.save('datasets/complexwebq/relation_emb_300d.npy', relation_emb_npy)
+    # pkl.dump(relation_emb, open(OUT_RELATIONS_EMBEDDING, "wb"))
+    np.save('datasets/complexwebq/relation_emb_decoder_300d.npy', relation_emb_npy)
     return relation_emb
 
 
 if __name__ == '__main__':
-    # result = process_relation_embedding('datasets/complexwebq/glove.840B.300d.txt', False)
-    process_vocab('datasets/complexwebq/glove.840B.300d.txt')
+    result = process_relation_embedding('datasets/complexwebq/glove.840B.300d.txt', False)
+    # process_vocab('datasets/complexwebq/glove.840B.300d.txt')
     # process_entities()
     # process_vocab('datasets/complexwebq/glove.6B.200d.txt')
 

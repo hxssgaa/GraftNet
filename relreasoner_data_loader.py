@@ -51,8 +51,6 @@ class RelReasonerDataLoader():
                 data_line_copy['rel_chain_ground_truth'] = gt
                 data_line_copy['rel_chain_cands'] = cands
                 self.data.append(data_line_copy)
-                self.max_local_path_rel = max(self.max_local_path_rel, len(data_line_copy['rel_chain_cands']))
-        print('max_local_path_rel:', self.max_local_path_rel)
         self.num_data = len(self.data)
 
         self.batches = np.arange(self.num_data)
@@ -60,14 +58,14 @@ class RelReasonerDataLoader():
         print('building word index ...')
         self.word2id = word2id
         self.relation2id = relation2id
+        self.max_local_path_rel = len(self.relation2id)
+        print('max_local_path_rel:', self.max_local_path_rel)
         self.reverse_relation2id = {v: k for k, v in relation2id.items()}
 
         print('preparing data ...')
-        self.seed_entity_types = np.full((self.num_data, self.max_type_word), len(self.word2id), dtype=int)
-        self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel, self.num_hop), len(self.relation2id), dtype=int)
-        self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.max_rel_num, self.max_query_word), len(self.word2id), dtype=int)
-        self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
-        self.answer_dists = np.zeros((self.num_data, self.max_local_path_rel), dtype=float)
+        self.seed_entity_types = np.full((self.max_type_word, self.num_data), len(self.word2id), dtype=int)
+        self.query_texts = np.full((self.max_query_word, self.num_data), len(self.word2id), dtype=int)
+        self.targets = np.full((self.num_hop + 1, self.num_data), len(relation2id), dtype=int)
 
         self._prepare_data()
 
@@ -86,14 +84,14 @@ class RelReasonerDataLoader():
         avg_question_words_recall = 0.0
         for idx_q, sample in tqdm(enumerate(self.data)):
             # build answers
-            rel_ids = set()
+            target_answer_path = list()
             seed_entity = sample['seed_entity']
             ground_truth_key = 'rel_chain_ground_truth'
             if ground_truth_key in sample:
                 gt = sample[ground_truth_key]
                 for each_gt in gt:
-                    rel_id = tuple([self.relation2id[r] for r in each_gt])
-                    rel_ids.add(rel_id)
+                    target_answer_path = [self.relation2id[r] for r in each_gt]
+                    break
 
             # build seed entity types
             total_words = 0
@@ -112,24 +110,17 @@ class RelReasonerDataLoader():
                         if idx >= self.max_type_word:
                             break
                         if word in self.word2id:
-                            self.seed_entity_types[next_id, idx] = self.word2id[word]
+                            self.seed_entity_types[idx, next_id] = self.word2id[word]
                             known_words += 1
                         else:
-                            self.seed_entity_types[next_id, idx] = self.word2id['__unk__']
+                            self.seed_entity_types[idx, next_id] = self.word2id['__unk__']
                         total_words += 1
             avg_total_words_recall += ((known_words / total_words) if total_words > 0 else 1)
 
-            rel_cands = sample['rel_chain_cands']
-
-            for i in range(min(len(rel_cands), self.max_local_path_rel)):
-                for j in range(self.num_hop):
-                    self.local_kb_rel_path_rels[idx_q][i][j] = self.relation2id[rel_cands[i][j]]
-                    key = tuple(self.local_kb_rel_path_rels[idx_q][i])
-                    if key in rel_ids:
-                        self.answer_dists[idx_q][i] = 1.0
-
-            if np.sum(self.answer_dists[idx_q]) == 0:
-                pass
+            self.targets[0, next_id] = self.relation2id['SOS']
+            for j, target_rel_id in enumerate(target_answer_path):
+                if j < self.num_hop:
+                    self.targets[j + 1, next_id] = target_rel_id
 
             stop_words.update(question_word_list)
 
@@ -159,10 +150,10 @@ class RelReasonerDataLoader():
             for j, word in enumerate(question_word_spt):
                 if j < self.max_query_word:
                     if word in self.word2id:
-                        self.query_texts[next_id, j] = self.word2id[word]
+                        self.query_texts[j, next_id] = self.word2id[word]
                         avg_qw_recall += 1
                     else:
-                        self.query_texts[next_id, j] = self.word2id['__unk__']
+                        self.query_texts[j, next_id] = self.word2id['__unk__']
             avg_qw_recall /= len(question_word_spt)
             next_id += 1
             avg_question_words_recall += avg_qw_recall
@@ -188,8 +179,6 @@ class RelReasonerDataLoader():
         """
         sample_ids = self.batches[batch_size * iteration: batch_size * (iteration + 1)]
 
-        return self.query_texts[sample_ids], \
-               self.relation_texts[sample_ids], \
-               self.local_kb_rel_path_rels[sample_ids], \
-               self.seed_entity_types[sample_ids], \
-               self.answer_dists[sample_ids]
+        return self.query_texts[:, sample_ids], \
+               self.seed_entity_types[:, sample_ids], \
+               self.targets[:, sample_ids]

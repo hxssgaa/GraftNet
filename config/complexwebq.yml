@@ -5,12 +5,12 @@ dev_data: 'complex_dev_processed_new2.json'
 test_data: 'complex_test_processed_new2.json'
 
 word2id: 'vocab.txt'
-relation2id: 'relations.txt'
+relation2id: 'relations_decoder.txt'
 entity2id: 'entities_v2.txt'
 word_emb_file: "word_emb_300d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_300d.npy"
+relation_emb_file: "relation_emb_decoder_300d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 fact_data: "datasets/complexwebq/all_facts_all_new2.json"
 
@@ -19,8 +19,8 @@ to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid2"
 pred_file: "model/complexwebq/pred_hybrid"
 load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner_14_4"
-load_fpnet_model_file: "model/complexwebq/best_relreasoner_14_3"
+save_fpnet_model_file: "model/complexwebq/best_relreasoner_decoder"
+load_fpnet_model_file: #"model/complexwebq/best_relreasoner_decoder"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 load_entity_model_file:
 
@@ -42,11 +42,11 @@ fact_scale: 3
 use_inverse_relation: False
 
 # optimization
-num_epoch: 150
+num_epoch: 200
 batch_size: 80
 test_batch_size: 20
 gradient_clip: 1
-learning_rate: 0.0001
+learning_rate: 0.001
 lstm_dropout: 0.3
 linear_dropout: 0.2
 is_debug: False

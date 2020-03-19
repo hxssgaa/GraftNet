@@ -1,166 +1,202 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.autograd import Variable
 
 import numpy as np
+import random
 
 from util import use_cuda, read_padded, sparse_bmm
 from transformers import *
 
 
 VERY_NEG_NUMBER = -100000000000
+EOD_TOKEN = 8659 # TODO: fix magic number
+
+
+class QuestionEncoder(nn.Module):
+    def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout, pre_emb_file=None):
+        super().__init__()
+
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
+
+        self.embedding = nn.Embedding(num_embeddings=input_dim + 1, embedding_dim=emb_dim, padding_idx=input_dim)
+        if pre_emb_file is not None:
+            self.embedding.weight = nn.Parameter(
+                torch.from_numpy(np.pad(np.load(pre_emb_file), ((0, 1), (0, 0)), 'constant')).type(
+                    'torch.FloatTensor'), requires_grad=False)
+            print('load question word emb')
+
+        self.question_text_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False, dropout=dropout)
+        self.seed_type_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=1, bidirectional=False)
+        #self.question_seed_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, src_question, src_seed):
+        batch_size = src_question.shape[0]
+
+        q_embedded = self.dropout(self.embedding(src_question))  # batch_size, max_query_word, word_dim
+        q_output, (q_hidden, q_cell) = self.question_text_encoder(q_embedded)
+
+        # q_hidden = q_hidden.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
+        # q_hidden = q_hidden[-1]
+        # q_hidden = q_hidden.view(batch_size, -1, 1)
+
+        # -------------------------Preserved-----------------------------------
+        seed_emb = self.dropout(self.embedding(src_seed))
+        _, (seed_hidden, _) = self.seed_type_encoder(seed_emb)
+        q_seed_cat = torch.cat((q_hidden, seed_hidden), 0)
+        #
+        # _, (q_seed_hidden, q_seed_cell) = self.question_seed_encoder(q_seed_cat)
+
+        encoder_output, (hidden, cell) = self.question_text_encoder(q_seed_cat, (q_hidden, q_cell))
+
+        return q_output, (hidden, cell)
+
+    def init_hidden(self, num_layer, batch_size, hidden_size):
+        return (use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))),
+                use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))))
+
+
+class RelationChainDecoder(nn.Module):
+    def __init__(self, output_dim, emb_dim, hid_dim, n_layers, max_len, dropout, pre_emb_file=None):
+        super().__init__()
+
+        self.output_dim = output_dim
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
+        self.max_len = max_len
+
+        self.embedding = nn.Embedding(num_embeddings=output_dim + 1, embedding_dim=emb_dim, padding_idx=output_dim)
+        if pre_emb_file is not None:
+            self.embedding.weight = nn.Parameter(
+                torch.from_numpy(np.pad(np.load(pre_emb_file), ((0, 1), (0, 0)), 'constant')).type(
+                    'torch.FloatTensor'), requires_grad=False)
+            print('load relation chain emb')
+
+        self.relation_encoder = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
+        self.hidden_linear = nn.Linear(hid_dim, hid_dim)
+        self.attn = nn.Linear(self.hid_dim * 2, self.max_len)
+        self.attn_combine = nn.Linear(self.hid_dim * 2, self.hid_dim)
+        self.fc_out = nn.Linear(hid_dim, output_dim)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, input_relation, hidden, cell, encoder_output):
+        # input = [batch size]
+        # hidden = [n layers * n directions, batch size, hid dim]
+        # cell = [n layers * n directions, batch size, hid dim]
+
+        # n directions in the decoder will both always be 1, therefore:
+        # hidden = [n layers, batch size, hid dim]
+        # context = [n layers, batch size, hid dim]
+        input_relation = input_relation.unsqueeze(0)
+
+        # input = [1, batch size]
+        embedded = self.dropout(self.embedding(input_relation))
+
+        attn_weights = F.softmax(self.attn(torch.cat((embedded[0], hidden[-1]), dim=1)), dim=1)
+        attn_weights = attn_weights.unsqueeze(1)
+        encoder_output = encoder_output.view(encoder_output.shape[1], encoder_output.shape[0], -1)
+        attn_applied = torch.bmm(attn_weights, encoder_output)
+
+        output = torch.cat((attn_applied.squeeze(1), embedded.squeeze(0)), dim=1)
+        output = self.attn_combine(output).unsqueeze(0)
+        output = F.relu(output)
+        # embedded = [1, batch size, emb dim]
+        output, (hidden, cell) = self.relation_encoder(output, (hidden, cell))
+
+        # output = [seq len, batch size, hid dim * n directions]
+        # hidden = [n layers * n directions, batch size, hid dim]
+        # cell = [n layers * n directions, batch size, hid dim]
+
+        # seq len and n directions will always be 1 in the decoder, therefore:
+        # output = [1, batch size, hid dim]
+        # hidden = [n layers, batch size, hid dim]
+        # cell = [n layers, batch size, hid dim]
+        # output = self.hidden_linear(output.squeeze(0))
+
+        prediction = self.fc_out(output.squeeze(0))
+
+        # prediction = [batch size, output dim]
+        return prediction, hidden, cell
 
 
 class RelReasoner(nn.Module):
-    def __init__(self, pretrained_word_embedding_file, pretrained_relation_emb_file, num_relation, num_entity, num_word, num_hop,
-                 entity_dim, word_dim, lstm_dropout, use_inverse_relation):
+    def __init__(self, pre_word_emb_file, pre_relation_emb_file, num_relation, num_entity, num_word,
+                 num_hop, hidden_dim, word_dim, num_layer, dropout, max_len):
         super(RelReasoner, self).__init__()
 
         self.num_relation = num_relation
+        self.num_hop = num_hop
         self.num_entity = num_entity
         self.num_word = num_word
-        self.entity_dim = entity_dim
+        self.hidden_dim = hidden_dim
         self.word_dim = word_dim
-        self.num_lstm_layer = 3
-        self.train_eod = False
+        self.num_layer = num_layer
+        self.max_len = max_len
 
-        self.relation_embedding = nn.Embedding(num_embeddings=num_relation + 1, embedding_dim=word_dim,
-                                               padding_idx=num_relation)
-        if pretrained_relation_emb_file is not None:
-            self.relation_embedding.weight = nn.Parameter(
-                torch.from_numpy(np.pad(np.load(pretrained_relation_emb_file), ((0, 1), (0, 0)), 'constant')).type(
-                    'torch.FloatTensor'))
-            print('loaded relation_emb')
-            self.relation_embedding.weight.requires_grad = False
+        self.encoder = QuestionEncoder(num_word, word_dim, hidden_dim, num_layer, dropout, pre_word_emb_file)
+        self.decoder = RelationChainDecoder(num_relation, word_dim, hidden_dim, num_layer, max_len, dropout, pre_relation_emb_file)
 
-        self.word_embedding = nn.Embedding(num_embeddings=num_word + 1, embedding_dim=word_dim, padding_idx=num_word)
-        if pretrained_word_embedding_file is not None:
-            self.word_embedding.weight = nn.Parameter(
-                torch.from_numpy(np.pad(np.load(pretrained_word_embedding_file), ((0, 1), (0, 0)), 'constant')).type(
-                    'torch.FloatTensor'))
-            self.word_embedding.weight.requires_grad = False
-            print('load word emb')
+        def init_weights(m):
+            for name, param in m.named_parameters():
+                nn.init.uniform_(param.data, -0.08, 0.08)
 
-        self.relation_linear = nn.Linear(in_features=word_dim, out_features=entity_dim)
-        # self.eod_linear1 = nn.Linear(in_features=entity_dim * 2, out_features=entity_dim)
-        # self.eod_linear1_1 = nn.Linear(in_features=entity_dim, out_features=entity_dim)
-        # self.eod_linear2 = nn.Linear(in_features=entity_dim, out_features=100)
-        # self.eod_linear3 = nn.Linear(in_features=100, out_features=1)
-        # self.relation_linear2 = nn.Linear(in_features=word_dim, out_features=entity_dim)
-        # self.relation_linear3 = nn.Linear(in_features=word_dim, out_features=entity_dim)
-        # self.hidden1 = nn.Linear(in_features=word_dim, out_features=entity_dim)
-        # self.relation_weight = nn.Linear(in_features=3, out_features=1)
+        self.encoder.apply(init_weights)
+        self.decoder.apply(init_weights)
 
-        self.node_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=self.num_lstm_layer, batch_first=True, bidirectional=False)
-        self.relation_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=self.num_lstm_layer, batch_first=True, bidirectional=False)
-        self.seed_type_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=1, batch_first=True, bidirectional=False)
-        self.question_seed_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=1, batch_first=True, bidirectional=False)
-        self.sigmoid = nn.Sigmoid()
-        # self.batch_norm = use_cuda(torch.nn.BatchNorm1d(word_dim if num_hop == 2 else 300))
-        self.softmax_d1 = nn.Softmax(dim=1)
-        # dropout
-        self.lstm_drop = nn.Dropout(p=lstm_dropout)
-        self.linear_drop = nn.Dropout(p=0.2)
         # loss
-        self.bce_loss = nn.BCEWithLogitsLoss()
+        self.criterion = nn.CrossEntropyLoss()
         self.relu = nn.ReLU()
-        # self.max_pooling = nn.MaxPool1d()
-        # self.bert_model = use_cuda(BertModel.from_pretrained('bert-base-uncased'))
 
-        # self.node_linear1 = nn.Linear(in_features=entity_dim, out_features=entity_dim // 2)
-        # self.node_linear2 = nn.Linear(in_features=entity_dim // 2, out_features=entity_dim // 4)
-        # self.node_linear3 = nn.Linear(in_features=entity_dim // 4, out_features=self.num_relation)
+    def forward(self, batch, teacher_forcing_ratio=0.5):
+        query_text, seed_entity_types, targets = batch
 
-    def forward(self, batch):
-        query_text, relation_text, local_kb_rel_path_rels, seed_entity_types, answer_dist = batch
-
-        batch_size, max_rel_paths, num_hop = local_kb_rel_path_rels.shape
-        max_rel_num = relation_text.shape[2]
+        batch_size = query_text.shape[1]
 
         # numpy to tensor
         with torch.no_grad():
             query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor')))
-            query_mask = use_cuda((query_text != self.num_word).type('torch.FloatTensor'))
-            relation_text = use_cuda(Variable(torch.from_numpy(relation_text).type('torch.LongTensor')))
-            relation_mask = use_cuda((relation_text != self.num_word).type('torch.FloatTensor'))
             seed_entity_types = use_cuda(Variable(torch.from_numpy(seed_entity_types).type('torch.LongTensor')))
-            local_kb_rel_path_rels = use_cuda(
-                Variable(torch.from_numpy(local_kb_rel_path_rels).type('torch.LongTensor')))
-            local_kb_rel_path_rels_last = local_kb_rel_path_rels[:, :, -1]
-            local_kb_rel_path_rels_mask = use_cuda((local_kb_rel_path_rels_last != self.num_relation).type('torch.FloatTensor'))
-            answer_dist = use_cuda(
-                Variable(torch.from_numpy(answer_dist).type('torch.FloatTensor')))
-        # # encode query
-        # query_node_emb = self.bert_model(query_text)[0]
-        #
-        # local_rel_emb = self.bert_model(relation_text)[0]
-        query_word_emb = self.word_embedding(query_text)  # batch_size, max_query_word, word_dim
-        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb),
-                                                                  self.init_hidden(self.num_lstm_layer, batch_size,
-                                                                                   self.entity_dim))  # 1, batch_size, entity_dim
-        query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
-        query_node_emb = query_node_emb[-1]
-        query_node_emb = query_node_emb.view(batch_size, -1, 1)
+            targets = use_cuda(Variable(torch.from_numpy(targets).type('torch.LongTensor')))
 
-        #-------------------------Preserved-----------------------------------
-        seed_entity_types_emb = self.word_embedding(seed_entity_types)
-        _, (seed_entity_types_hidden_emb, _) = self.seed_type_encoder(self.lstm_drop(seed_entity_types_emb),
-                                                                      self.init_hidden(1, batch_size,
-                                                                                       self.entity_dim))
-        seed_entity_types_hidden_emb = seed_entity_types_hidden_emb.view(batch_size, -1, 1)
-        question_seed_entity = torch.cat((query_node_emb, seed_entity_types_hidden_emb), 2).view(batch_size, 2, -1)
+        encoder_output, (hidden, cell) = self.encoder(query_text, seed_entity_types)
 
-        _, (question_seed_entity_hidden_emb, _) = self.question_seed_encoder(question_seed_entity,
-                                                                             self.init_hidden(1, batch_size,
-                                                                                              self.entity_dim))
+        #tensor to store decoder outputs
+        outputs = use_cuda(torch.zeros(self.num_hop + 1, batch_size, self.num_relation))
+        preds = use_cuda(torch.zeros(self.num_hop, batch_size))
 
-        question_seed_entity_hidden_emb = question_seed_entity_hidden_emb.view(batch_size, -1, 1)
-        # -------------------------Preserved-----------------------------------
+        # first input to the decoder is the <sos> tokens
+        decoder_input = targets[0, :]
 
-        # ----------------------Original----------------------
-        # relation_text = relation_text.view(-1, relation_text.shape[3])
-        # rel_word_emb = self.word_embedding(relation_text)
-        # _, (rel_hidden_emb, _) = self.relation_encoder(self.lstm_drop(rel_word_emb),
-        #                                                self.init_hidden(self.num_lstm_layer, relation_text.shape[0],
-        #                                                                 self.entity_dim))
-        # rel_hidden_emb = rel_hidden_emb[-1]
-        # rel_hidden_emb = rel_hidden_emb.view(batch_size, max_rel_paths, -1, max_rel_num)
-        # rel_hidden_emb = self.relation_weight(rel_hidden_emb).squeeze(3)
-        # ----------------------Original----------------------
+        for t in range(1, self.num_hop + 1):
+            # insert input token embedding, previous hidden and previous cell states
+            # receive output tensor (predictions) and new hidden and cell states
+            output, hidden, cell = self.decoder(decoder_input, hidden, cell, encoder_output)
 
-        local_rel_emb = self.relation_embedding(local_kb_rel_path_rels)
-        local_rel_emb = local_rel_emb.view(-1, local_rel_emb.shape[2], local_rel_emb.shape[3])
-        local_rel_hidden_emb, (local_rel_node_emb, _) = self.relation_encoder(self.lstm_drop(local_rel_emb),
-                                                                              self.init_hidden(self.num_lstm_layer,
-                                                                                               local_rel_emb.shape[0],
-                                                                                               self.entity_dim))
-        local_rel_node_emb = local_rel_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
-        local_rel_node_emb = local_rel_node_emb[-1]
-        local_rel_node_emb = local_rel_node_emb.view(batch_size, max_rel_paths, -1)
+            # place predictions in a tensor holding predictions for each token
+            outputs[t] = output
 
-        # Attention
-        div = float(np.sqrt(self.entity_dim))
-        local_rel_emb = self.relation_linear(local_rel_node_emb)
+            # decide if we are going to use teacher forcing or not
+            teacher_force = random.random() < teacher_forcing_ratio
 
-        rel_score = local_rel_emb @ question_seed_entity_hidden_emb
-        rel_score = (rel_score / div).squeeze(2) + (1 - local_kb_rel_path_rels_mask) * VERY_NEG_NUMBER
+            # get the highest predicted token from our predictions
+            top1 = output.argmax(1)
+            preds[t - 1] = top1
 
-        loss = self.bce_loss(rel_score, answer_dist)
+            # if teacher forcing, use actual next token as next input
+            # if not, use predicted token
+            decoder_input = targets[t] if teacher_force else top1
 
-        pred = torch.topk(rel_score, 3, dim=1)[1]
-        # pred_max = torch.argmax(rel_score, dim=1)
+        output_dim = outputs.shape[-1]
+        outputs = outputs[1:].view(-1, output_dim)
+        targets = targets[1:].view(-1)
 
-        # top_relation_emb = local_rel_node_emb[torch.arange(local_rel_node_emb.shape[0]), pred_max]
-        # question_seed_entity_hidden_emb = question_seed_entity_hidden_emb.view(batch_size, -1)
-        # query_top_relation_emb = torch.cat([question_seed_entity_hidden_emb, top_relation_emb], dim=1)
-        # eod_score = self.linear_drop(self.eod_linear1(query_top_relation_emb))
-        # eod_score = self.linear_drop(self.eod_linear1_1(self.relu(eod_score)))
-        # eod_score = self.eod_linear2(self.relu(eod_score))
-        # eod_score = self.eod_linear3(self.relu(eod_score))
-        # eod_loss = self.bce_loss(eod_score, local_kb_rel_eods)
-        # pred_eod = (self.sigmoid(eod_score) > 0.5) * 1
+        loss = self.criterion(outputs, targets)
 
-        return loss, pred, None  # pred, pred_dist
+        return loss, preds, None  # pred, pred_dist
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
         return (use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))),

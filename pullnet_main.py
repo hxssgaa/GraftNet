@@ -212,25 +212,25 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     rel_mapping = dict()
     for iteration in tqdm(range(data.num_data // test_batch_size)):
         batch = data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
-        loss, pred, _ = my_model(batch)
-        pred = pred.data.cpu().numpy()
-        if not is_train and not is_order:
-            for row in range(pred.shape[0]):
-                sample = data.data[iteration * test_batch_size + row]
-                cands = sample['rel_chain_cands']
-                seed_entity = sample['seed_entity']
-
-                relations = []
-                for col in range(pred.shape[1]):
-                    if pred[row][col] < len(cands):
-                        relations.append(tuple(cands[pred[row][col]]))
-                # data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
-                if relations:
-                    top_relation = relations[0]
-                    if sample['ID'] not in rel_mapping:
-                        rel_mapping[sample['ID']] = dict()
-                    rel_mapping_dict = rel_mapping[sample['ID']]
-                    rel_mapping_dict[seed_entity] = top_relation
+        loss, pred, _ = my_model(batch, teacher_forcing_ratio=0)
+        pred = pred.data.cpu().numpy().reshape(pred.shape[1], -1).astype(np.int32)
+        # if not is_train and not is_order:
+        #     for row in range(pred.shape[0]):
+        #         sample = data.data[iteration * test_batch_size + row]
+        #         cands = sample['rel_chain_cands']
+        #         seed_entity = sample['seed_entity']
+        #
+        #         relations = []
+        #         for col in range(pred.shape[1]):
+        #             if pred[row][col] < len(cands):
+        #                 relations.append(tuple(cands[pred[row][col]]))
+        #         # data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
+        #         if relations:
+        #             top_relation = relations[0]
+        #             if sample['ID'] not in rel_mapping:
+        #                 rel_mapping[sample['ID']] = dict()
+        #             rel_mapping_dict = rel_mapping[sample['ID']]
+        #             rel_mapping_dict[seed_entity] = top_relation
                     # next_hop_entities = set()
                     # key = 'entities' if num_hop == 1 else 'entities_pred%d' % (num_hop - 1)
                     # for e in data.data[iteration * test_batch_size + row][key]:
@@ -253,93 +253,93 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
         #         for rel_id in pred_path:
         #             relations.append(reverse_relation2id[rel_id])
         #         data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
-        hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1])
+        hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1][1:].reshape(test_batch_size, -1).astype(np.int32))
         eval_hit_at_one.append(hit_at_one)
         eval_loss.append(loss.item())
-        eval_recall.append(recall)
-        eval_max_acc.append(max_acc)
+        # eval_recall.append(recall)
+        # eval_max_acc.append(max_acc)
 
-    avg_recall = 0
-    total = 0
-    min_items = []
-    max_items = []
-    item_lens = []
-    ACCEPT_OTHER_BRANCH_ENTITIES = 20
-    block_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
-    for sample in origin_data:
-        if sample['ID'] not in rel_mapping:
-            continue
-        rel_mapping_dict = rel_mapping[sample['ID']]
-        sample['rel_map_%d' % num_hop] = rel_mapping_dict
-        if num_hop == 1:
-            prev_entities = {k: {k} for k in sample['entities']}
-        else:
-            prev_entities = sample['entities_%d' % (num_hop - 1)]
-        next_entities = dict()
-        for k in prev_entities:
-            if k not in rel_mapping_dict:
-                continue
-            entities = prev_entities[k]
-            top_relation = rel_mapping_dict[k][-1]
-            next_entities_set = set()
-            for entity in entities:
-                if top_relation != 'EOD' and entity in facts and top_relation in facts[entity]:
-                    next_entities_set.update(set(facts[entity][top_relation].keys()))
-            next_entities[k] = next_entities_set
-
-        # ground_truth_next_all_entities = set()
-        # for gt in sample['ground_truth_path']:
-        #     if num_hop * 2 < len(gt):
-        #         ground_truth_next_all_entities.add(gt[num_hop * 2])
-        # Choose intersection of next predicting entities from each topic entity path.
-        next_entity_map_items = list(next_entities.items())
-        for i in range(len(next_entity_map_items)):
-            ki, vi = next_entity_map_items[i][0], next_entity_map_items[i][1]
-            for hop in range(1, num_hop):
-                constraint_entities_dict = sample['entities_%d' % hop]
-                if ki in constraint_entities_dict:
-                    constraint_entities = constraint_entities_dict[ki]
-                    if len(constraint_entities & vi) > 0:
-                        vi = vi & constraint_entities
-                        next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
-            for j in range(len(next_entity_map_items)):
-                if i == j:
-                    continue
-                kj, vj = next_entity_map_items[j][0], next_entity_map_items[j][1]
-                if len(vi & vj) > 0:
-                    inter_i_j = vi & vj
-                    vi = inter_i_j.copy()
-                    vj = inter_i_j.copy()
-                    next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
-                    next_entity_map_items[j] = (next_entity_map_items[j][0], vj)
-        next_entities = {k: v for k, v in next_entity_map_items}
-        visited_entities = set()
-        for prev_hop in range(1, num_hop):
-            if ('entities_%d' % prev_hop) in sample:
-                visited_entities.update(sample['entities_%d' % prev_hop])
-        next_entities = {k: {vv for vv in v if vv not in visited_entities} for k, v in next_entities.items()}
-        sample['entities_%d' % num_hop] = next_entities
-        cands_map = dict()
-        for k in next_entities:
-            entities = next_entities[k]
-            cur_relation_chain = list(rel_mapping_dict[k])
-            rel_cands = set()
-            for entity in entities:
-                rel_cands.update(list(facts[entity].keys()))
-            rel_cands = set(list(rel_cands)[:300])
-            if include_eod:
-                rel_cands.add('EOD')
-            rel_cands = list(filter(lambda x: x not in block_rels, rel_cands))
-            rel_cands = [cur_relation_chain + [k] for k in rel_cands]
-            cands_map[k] = rel_cands
-            if num_hop < T:
-                if k in sample['rel_chain_map'][str(num_hop + 1)]:
-                    sample['rel_chain_map'][str(num_hop + 1)][k]['cands'] = rel_cands
-                elif cur_relation_chain[-1] != 'EOD':
-                    sample['rel_chain_map'][str(num_hop + 1)][k] = {
-                        'ground_truth': [],
-                        'cands': rel_cands
-                    }
+    # avg_recall = 0
+    # total = 0
+    # min_items = []
+    # max_items = []
+    # item_lens = []
+    # ACCEPT_OTHER_BRANCH_ENTITIES = 20
+    # block_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
+    # for sample in origin_data:
+    #     if sample['ID'] not in rel_mapping:
+    #         continue
+    #     rel_mapping_dict = rel_mapping[sample['ID']]
+    #     sample['rel_map_%d' % num_hop] = rel_mapping_dict
+    #     if num_hop == 1:
+    #         prev_entities = {k: {k} for k in sample['entities']}
+    #     else:
+    #         prev_entities = sample['entities_%d' % (num_hop - 1)]
+    #     next_entities = dict()
+    #     for k in prev_entities:
+    #         if k not in rel_mapping_dict:
+    #             continue
+    #         entities = prev_entities[k]
+    #         top_relation = rel_mapping_dict[k][-1]
+    #         next_entities_set = set()
+    #         for entity in entities:
+    #             if top_relation != 'EOD' and entity in facts and top_relation in facts[entity]:
+    #                 next_entities_set.update(set(facts[entity][top_relation].keys()))
+    #         next_entities[k] = next_entities_set
+    #
+    #     # ground_truth_next_all_entities = set()
+    #     # for gt in sample['ground_truth_path']:
+    #     #     if num_hop * 2 < len(gt):
+    #     #         ground_truth_next_all_entities.add(gt[num_hop * 2])
+    #     # Choose intersection of next predicting entities from each topic entity path.
+    #     next_entity_map_items = list(next_entities.items())
+    #     for i in range(len(next_entity_map_items)):
+    #         ki, vi = next_entity_map_items[i][0], next_entity_map_items[i][1]
+    #         for hop in range(1, num_hop):
+    #             constraint_entities_dict = sample['entities_%d' % hop]
+    #             if ki in constraint_entities_dict:
+    #                 constraint_entities = constraint_entities_dict[ki]
+    #                 if len(constraint_entities & vi) > 0:
+    #                     vi = vi & constraint_entities
+    #                     next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
+    #         for j in range(len(next_entity_map_items)):
+    #             if i == j:
+    #                 continue
+    #             kj, vj = next_entity_map_items[j][0], next_entity_map_items[j][1]
+    #             if len(vi & vj) > 0:
+    #                 inter_i_j = vi & vj
+    #                 vi = inter_i_j.copy()
+    #                 vj = inter_i_j.copy()
+    #                 next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
+    #                 next_entity_map_items[j] = (next_entity_map_items[j][0], vj)
+    #     next_entities = {k: v for k, v in next_entity_map_items}
+    #     visited_entities = set()
+    #     for prev_hop in range(1, num_hop):
+    #         if ('entities_%d' % prev_hop) in sample:
+    #             visited_entities.update(sample['entities_%d' % prev_hop])
+    #     next_entities = {k: {vv for vv in v if vv not in visited_entities} for k, v in next_entities.items()}
+    #     sample['entities_%d' % num_hop] = next_entities
+    #     cands_map = dict()
+    #     for k in next_entities:
+    #         entities = next_entities[k]
+    #         cur_relation_chain = list(rel_mapping_dict[k])
+    #         rel_cands = set()
+    #         for entity in entities:
+    #             rel_cands.update(list(facts[entity].keys()))
+    #         rel_cands = set(list(rel_cands)[:300])
+    #         if include_eod:
+    #             rel_cands.add('EOD')
+    #         rel_cands = list(filter(lambda x: x not in block_rels, rel_cands))
+    #         rel_cands = [cur_relation_chain + [k] for k in rel_cands]
+    #         cands_map[k] = rel_cands
+    #         if num_hop < T:
+    #             if k in sample['rel_chain_map'][str(num_hop + 1)]:
+    #                 sample['rel_chain_map'][str(num_hop + 1)][k]['cands'] = rel_cands
+    #             elif cur_relation_chain[-1] != 'EOD':
+    #                 sample['rel_chain_map'][str(num_hop + 1)][k] = {
+    #                     'ground_truth': [],
+    #                     'cands': rel_cands
+    #                 }
 
         # min_index = int(np.argmin([len(item[1]) for item in next_entity_map_items]))
         # s = next_entity_map_items[min_index][0]
@@ -385,15 +385,15 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     # print('next_hop_entities recall', avg_recall / len(origin_data))
 
     print('avg_loss', sum(eval_loss) / len(eval_loss))
-    print('max_acc', sum(eval_max_acc) / len(eval_max_acc))
+    # print('max_acc', sum(eval_max_acc) / len(eval_max_acc))
     print('avg_hit_at_one', sum(eval_hit_at_one) / len(eval_hit_at_one))
-    print('avg_recall', sum(eval_recall) / len(eval_recall))
+    # print('avg_recall', sum(eval_recall) / len(eval_recall))
 
-    return sum(eval_hit_at_one) / len(eval_hit_at_one)
+    return sum(eval_loss) / len(eval_loss)
 
 
 def train_relreasoner(cfg, is_entity=False):
-    facts = load_json(cfg['fact_data'])
+    facts = None#load_json(cfg['fact_data'])
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
@@ -434,8 +434,8 @@ def train_relreasoner(cfg, is_entity=False):
             for iteration in tqdm(range(train_data.num_data // cfg['batch_size'])):
                 batch = train_data.get_batch(iteration, cfg['batch_size'], cfg['fact_dropout'])
                 loss, pred, _ = my_model(batch)
-                pred = pred.data.cpu().numpy()
-                hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1])
+                pred = pred.data.cpu().numpy().reshape(pred.shape[1], -1).astype(np.int32)
+                hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1][1:].reshape(cfg['batch_size'], -1).astype(np.int32))
                 train_hit_at_one.append(hit_at_one)
                 train_loss.append(loss.item())
                 train_recall.append(recall)
@@ -453,16 +453,16 @@ def train_relreasoner(cfg, is_entity=False):
 
             print("validating ...")
             eval_recall = inference_relreasoner(my_model, 20, valid_data, entity2id, relation2id, reverse_relation2id, cfg, is_entity)
-            if not is_entity:
-                if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
-                    print("saving model to", cfg['save_fpnet_model_file'])
-                    torch.save(my_model.state_dict(), cfg['save_fpnet_model_file'])
-                    best_dev_recall = eval_recall
-            else:
-                if eval_recall > best_dev_recall and cfg['save_entity_model_file']:
-                    print("saving model to", cfg['save_entity_model_file'])
-                    torch.save(my_model.state_dict(), cfg['save_entity_model_file'])
-                    best_dev_recall = eval_recall
+            # if not is_entity:
+            #     if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
+            #         print("saving model to", cfg['save_fpnet_model_file'])
+            #         torch.save(my_model.state_dict(), cfg['save_fpnet_model_file'])
+            #         best_dev_recall = eval_recall
+            # else:
+            #     if eval_recall > best_dev_recall and cfg['save_entity_model_file']:
+            #         print("saving model to", cfg['save_entity_model_file'])
+            #         torch.save(my_model.state_dict(), cfg['save_entity_model_file'])
+            #         best_dev_recall = eval_recall
 
         except KeyboardInterrupt:
             break
@@ -669,9 +669,8 @@ def get_relreasoner_model(cfg, num_hop, num_kb_relation, num_entities, num_vocab
 
     if not is_entity:
         my_model = use_cuda(RelReasoner(word_emb_file, relation_emb_file,
-                                         num_kb_relation, num_entities, num_vocab, num_hop, cfg['entity_dim'],
-                                         cfg['word_dim'], cfg['lstm_dropout'], cfg['use_inverse_relation']))
-        my_model.train_eod = True
+                                        num_kb_relation, num_entities, num_vocab, num_hop, cfg['entity_dim'],
+                                        cfg['word_dim'], cfg['num_layer'], cfg['lstm_dropout'], cfg['max_query_word']))
         if cfg['load_fpnet_model_file'] is not None:
             print('loading model from', cfg['load_fpnet_model_file'])
             pretrained_model_states = torch.load(cfg['load_fpnet_model_file'])
