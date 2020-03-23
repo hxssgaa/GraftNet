@@ -83,7 +83,8 @@ class RelationChainDecoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, input_relation, hidden, cell, encoder_output):
+    def forward(self, input_relation, hidden, cell, encoder_output,
+                original):
         # input = [batch size]
         # hidden = [n layers * n directions, batch size, hid dim]
         # cell = [n layers * n directions, batch size, hid dim]
@@ -151,7 +152,7 @@ class RelReasoner(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.relu = nn.ReLU()
 
-    def forward(self, batch, teacher_forcing_ratio=0.5, facts=None):
+    def forward(self, batch, teacher_forcing_ratio=0.5, facts=None, relation2id=None, reverse_relation2id=None):
         query_text, seed_entity_types, targets, original_data = batch
 
         batch_size = query_text.shape[1]
