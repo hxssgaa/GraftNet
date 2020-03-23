@@ -393,7 +393,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
 
 
 def train_relreasoner(cfg, is_entity=False):
-    facts = None#load_json(cfg['fact_data'])
+    facts = load_json(cfg['fact_data'])
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
@@ -433,7 +433,7 @@ def train_relreasoner(cfg, is_entity=False):
             train_loss, train_hit_at_one, train_precision, train_recall, train_f1, train_max_acc = [], [], [], [], [], []
             for iteration in tqdm(range(train_data.num_data // cfg['batch_size'])):
                 batch = train_data.get_batch(iteration, cfg['batch_size'], cfg['fact_dropout'])
-                loss, pred, _ = my_model(batch)
+                loss, pred, _ = my_model(batch, facts=facts)
                 pred = pred.data.cpu().numpy().reshape(pred.shape[1], -1).astype(np.int32)
                 hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1][1:].reshape(cfg['batch_size'], -1).astype(np.int32))
                 train_hit_at_one.append(hit_at_one)

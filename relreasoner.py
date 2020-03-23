@@ -29,7 +29,7 @@ class QuestionEncoder(nn.Module):
             print('load question word emb')
 
         self.question_text_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False, dropout=dropout)
-        self.seed_type_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=1, bidirectional=False)
+        self.seed_type_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=1, bidirectional=False, dropout=dropout)
         #self.question_seed_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False)
         self.dropout = nn.Dropout(dropout)
 
@@ -115,9 +115,9 @@ class RelationChainDecoder(nn.Module):
         # output = [1, batch size, hid dim]
         # hidden = [n layers, batch size, hid dim]
         # cell = [n layers, batch size, hid dim]
-        # output = self.hidden_linear(output.squeeze(0))
+        output = self.hidden_linear(output.squeeze(0))
 
-        prediction = self.fc_out(output.squeeze(0))
+        prediction = self.fc_out(output)
 
         # prediction = [batch size, output dim]
         return prediction, hidden, cell
@@ -151,8 +151,8 @@ class RelReasoner(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.relu = nn.ReLU()
 
-    def forward(self, batch, teacher_forcing_ratio=0.5):
-        query_text, seed_entity_types, targets = batch
+    def forward(self, batch, teacher_forcing_ratio=0.5, facts=None):
+        query_text, seed_entity_types, targets, original_data = batch
 
         batch_size = query_text.shape[1]
 

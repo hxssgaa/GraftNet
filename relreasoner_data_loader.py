@@ -51,6 +51,7 @@ class RelReasonerDataLoader():
                 data_line_copy['rel_chain_ground_truth'] = gt
                 data_line_copy['rel_chain_cands'] = cands
                 self.data.append(data_line_copy)
+        self.data = np.array(self.data, dtype=np.object)
         self.num_data = len(self.data)
 
         self.batches = np.arange(self.num_data)
@@ -181,4 +182,5 @@ class RelReasonerDataLoader():
 
         return self.query_texts[:, sample_ids], \
                self.seed_entity_types[:, sample_ids], \
-               self.targets[:, sample_ids]
+               self.targets[:, sample_ids], \
+               self.data[sample_ids]
