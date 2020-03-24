@@ -163,7 +163,10 @@ class RelReasonerDataLoader():
                         avg_qw_recall += 1
                     else:
                         self.query_texts[next_id, j] = self.word2id['__unk__']
-            avg_qw_recall /= len(question_word_spt)
+            if len(question_word_spt) > 0:
+                avg_qw_recall /= len(question_word_spt)
+            else:
+                avg_qw_recall = 0
             next_id += 1
             avg_question_words_recall += avg_qw_recall
         print('avg_total_words_recall', avg_total_words_recall / len(self.data))
