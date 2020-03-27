@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 from torch.autograd import Variable
 
 import numpy as np
@@ -10,7 +11,7 @@ from util import use_cuda, read_padded, sparse_bmm
 from transformers import *
 
 
-VERY_NEG_NUMBER = -100000000000
+VERY_NEG_NUMBER = -10000
 EOD_TOKEN = 8659 # TODO: fix magic number
 
 
@@ -30,7 +31,6 @@ class QuestionEncoder(nn.Module):
 
         self.question_text_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False, dropout=dropout)
         self.seed_type_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=1, bidirectional=False, dropout=dropout)
-        #self.question_seed_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src_question, src_seed):
@@ -47,8 +47,6 @@ class QuestionEncoder(nn.Module):
         seed_emb = self.dropout(self.embedding(src_seed))
         _, (seed_hidden, _) = self.seed_type_encoder(seed_emb)
         q_seed_cat = torch.cat((q_hidden, seed_hidden), 0)
-        #
-        # _, (q_seed_hidden, q_seed_cell) = self.question_seed_encoder(q_seed_cat)
 
         encoder_output, (hidden, cell) = self.question_text_encoder(q_seed_cat, (q_hidden, q_cell))
 
@@ -83,8 +81,25 @@ class RelationChainDecoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
+    def _create_relation_mask(self, entities, facts, relation2id, reverse_relation2id):
+        mask = np.full((entities.shape[0], self.output_dim), 0, dtype=np.float32)
+        for idx in range(entities.shape[0]):
+            each_topic_entities = entities[idx]
+            next_relations = set()
+            for each_topic_entity in each_topic_entities:
+                if each_topic_entity in facts:
+                    next_relations.update(list(facts[each_topic_entity].keys()))
+            next_relations_ids = np.array([relation2id[e] for e in next_relations if e in relation2id])
+            if next_relations_ids.shape[0] > 0:
+                mask[idx][next_relations_ids] = 1
+            else:
+                mask[idx][:] = 1
+        mask = use_cuda(torch.tensor(mask))
+        return mask
+
+
     def forward(self, input_relation, hidden, cell, encoder_output,
-                original):
+                entities, facts, relation2id, reverse_relation2id):
         # input = [batch size]
         # hidden = [n layers * n directions, batch size, hid dim]
         # cell = [n layers * n directions, batch size, hid dim]
@@ -152,8 +167,25 @@ class RelReasoner(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.relu = nn.ReLU()
 
+    def next_hop_entities(self, entities, top1, facts, reverse_relation2id):
+        res = []
+        for idx in range(entities.shape[0]):
+            each_entities = entities[idx]
+            each_relation = reverse_relation2id[top1[idx].item()]
+            next_entities = set()
+            for each_entity in each_entities:
+                if each_entity in facts and each_relation in facts[each_entity]:
+                    next_entities.update(list(facts[each_entity][each_relation].keys()))
+            next_entities = list(next_entities)
+            res.append(next_entities)
+        return np.array(res, dtype=np.object)
+
     def forward(self, batch, teacher_forcing_ratio=0.5, facts=None, relation2id=None, reverse_relation2id=None):
-        query_text, seed_entity_types, targets, original_data = batch
+        # query_text are question texts
+        # seed_entity_type are seed entities of each question
+        # entities are topic entities which could use to filter unnecessary relations (Not used now)
+        # targets are the correct relation chain labels the models learn.
+        query_text, seed_entity_types, entities, targets = batch
 
         batch_size = query_text.shape[1]
 
@@ -175,7 +207,8 @@ class RelReasoner(nn.Module):
         for t in range(1, self.num_hop + 1):
             # insert input token embedding, previous hidden and previous cell states
             # receive output tensor (predictions) and new hidden and cell states
-            output, hidden, cell = self.decoder(decoder_input, hidden, cell, encoder_output)
+            output, hidden, cell = self.decoder(decoder_input, hidden, cell, encoder_output,
+                                                entities, facts, relation2id, reverse_relation2id)
 
             # place predictions in a tensor holding predictions for each token
             outputs[t] = output

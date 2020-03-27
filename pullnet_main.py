@@ -212,7 +212,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     rel_mapping = dict()
     for iteration in tqdm(range(data.num_data // test_batch_size)):
         batch = data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
-        loss, pred, _ = my_model(batch, teacher_forcing_ratio=0)
+        loss, pred, _ = my_model(batch, teacher_forcing_ratio=0, facts=facts, relation2id=relation2id, reverse_relation2id=reverse_relation2id)
         pred = pred.data.cpu().numpy().reshape(pred.shape[1], -1).astype(np.int32)
         # if not is_train and not is_order:
         #     for row in range(pred.shape[0]):
@@ -452,7 +452,7 @@ def train_relreasoner(cfg, is_entity=False):
             print('avg_training_recall', sum(train_recall) / len(train_recall))
 
             print("validating ...")
-            eval_recall = inference_relreasoner(my_model, 20, valid_data, entity2id, relation2id, reverse_relation2id, cfg, is_entity)
+            eval_recall = inference_relreasoner(my_model, 20, valid_data, entity2id, relation2id, reverse_relation2id, cfg, is_entity, facts=facts)
             # if not is_entity:
             #     if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
             #         print("saving model to", cfg['save_fpnet_model_file'])

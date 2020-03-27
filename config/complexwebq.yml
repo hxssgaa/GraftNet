@@ -29,7 +29,7 @@ fact_dropout: 0.1
 use_kb: True
 use_doc: False
 
-num_layer: 4
+num_layer: 2
 max_query_word: 20
 max_document_word: 50
 num_hop: 4
