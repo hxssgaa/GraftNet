@@ -405,13 +405,13 @@ def train_relreasoner(cfg, is_entity=False):
         train_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['train_data'], facts, features, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, teacher_force=True)
 
-        valid_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, features, num_hop,
+        valid_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, teacher_force=False)
     else:
         train_data = RelReasonerObjectDataLoader(cfg['data_folder'] + cfg['train_data'], facts, features, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, teacher_force=True)
 
-        valid_data = RelReasonerObjectDataLoader(cfg['data_folder'] + cfg['dev_data'], facts, features, num_hop,
+        valid_data = RelReasonerObjectDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
     my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, len(entity2id), len(word2id), is_entity=is_entity)

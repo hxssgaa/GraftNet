@@ -81,23 +81,6 @@ class RelationChainDecoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def _create_relation_mask(self, entities, facts, relation2id, reverse_relation2id):
-        mask = np.full((entities.shape[0], self.output_dim), 0, dtype=np.float32)
-        for idx in range(entities.shape[0]):
-            each_topic_entities = entities[idx]
-            next_relations = set()
-            for each_topic_entity in each_topic_entities:
-                if each_topic_entity in facts:
-                    next_relations.update(list(facts[each_topic_entity].keys()))
-            next_relations_ids = np.array([relation2id[e] for e in next_relations if e in relation2id])
-            if next_relations_ids.shape[0] > 0:
-                mask[idx][next_relations_ids] = 1
-            else:
-                mask[idx][:] = 1
-        mask = use_cuda(torch.tensor(mask))
-        return mask
-
-
     def forward(self, input_relation, hidden, cell, encoder_output,
                 entities, facts, relation2id, reverse_relation2id):
         # input = [batch size]
@@ -173,12 +156,28 @@ class RelReasoner(nn.Module):
             each_entities = entities[idx]
             each_relation = reverse_relation2id[top1[idx].item()]
             next_entities = set()
-            for each_entity in each_entities:
+            for each_entity in each_entities[:3]:
                 if each_entity in facts and each_relation in facts[each_entity]:
                     next_entities.update(list(facts[each_entity][each_relation].keys()))
             next_entities = list(next_entities)
             res.append(next_entities)
         return np.array(res, dtype=np.object)
+
+    def _create_relation_mask(self, entities, output_dim, facts, relation2id, reverse_relation2id):
+        mask = np.full((entities.shape[0], output_dim), 0, dtype=np.float32)
+        for idx in range(entities.shape[0]):
+            each_topic_entities = entities[idx]
+            next_relations = set()
+            for each_topic_entity in each_topic_entities[:3]:
+                if each_topic_entity in facts:
+                    next_relations.update(list(facts[each_topic_entity].keys()))
+            next_relations_ids = np.array([relation2id[e] for e in next_relations if e in relation2id])
+            if next_relations_ids.shape[0] > 0:
+                mask[idx][next_relations_ids] = 1
+            else:
+                mask[idx][:] = 1
+        mask = use_cuda(torch.tensor(mask))
+        return mask
 
     def forward(self, batch, teacher_forcing_ratio=0.5, facts=None, relation2id=None, reverse_relation2id=None):
         # query_text are question texts
@@ -205,6 +204,12 @@ class RelReasoner(nn.Module):
         decoder_input = targets[0, :]
 
         for t in range(1, self.num_hop + 1):
+            # t1 = time.time()
+
+            mask = None
+            if t == 1:
+                mask = self._create_relation_mask(entities, self.num_relation, facts, relation2id, reverse_relation2id)
+            # print('t1', time.time() - t1)
             # insert input token embedding, previous hidden and previous cell states
             # receive output tensor (predictions) and new hidden and cell states
             output, hidden, cell = self.decoder(decoder_input, hidden, cell, encoder_output,
@@ -216,9 +221,16 @@ class RelReasoner(nn.Module):
             # decide if we are going to use teacher forcing or not
             teacher_force = random.random() < teacher_forcing_ratio
 
+            if mask is not None:
+                output = output * mask
+
             # get the highest predicted token from our predictions
             top1 = output.argmax(1)
             preds[t - 1] = top1
+
+            # t1 = time.time()
+            # entities = self.next_hop_entities(entities, top1, facts, reverse_relation2id)
+            # print('t2', time.time() - t1)
 
             # if teacher forcing, use actual next token as next input
             # if not, use predicted token
