@@ -12,7 +12,7 @@ from transformers import *
 
 
 VERY_NEG_NUMBER = -10000
-EOD_TOKEN = 8659 # TODO: fix magic number
+EOD_TOKEN = 646 # TODO: fix magic number
 
 
 class QuestionEncoder(nn.Module):
@@ -75,9 +75,12 @@ class RelationChainDecoder(nn.Module):
 
         self.relation_encoder = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
         self.hidden_linear = nn.Linear(hid_dim, hid_dim)
+        # self.hidden_linear2 = nn.Linear(hid_dim, hid_dim // 4)
+        # self.hidden_linear3 = nn.Linear(hid_dim // 4, hid_dim // 8)
         self.attn = nn.Linear(self.hid_dim * 2, self.max_len)
         self.attn_combine = nn.Linear(self.hid_dim * 2, self.hid_dim)
         self.fc_out = nn.Linear(hid_dim, output_dim)
+        self.relu = nn.ReLU()
 
         self.dropout = nn.Dropout(dropout)
 
@@ -114,7 +117,10 @@ class RelationChainDecoder(nn.Module):
         # output = [1, batch size, hid dim]
         # hidden = [n layers, batch size, hid dim]
         # cell = [n layers, batch size, hid dim]
+
         output = self.hidden_linear(output.squeeze(0))
+        # output = self.relu(self.hidden_linear2(output))
+        # output = self.relu(self.hidden_linear3(output))
 
         prediction = self.fc_out(output)
 
@@ -203,12 +209,11 @@ class RelReasoner(nn.Module):
         # first input to the decoder is the <sos> tokens
         decoder_input = targets[0, :]
 
+        mask = None
+        mask = self._create_relation_mask(entities, self.num_relation, facts, relation2id, reverse_relation2id)
+
         for t in range(1, self.num_hop + 1):
             # t1 = time.time()
-
-            mask = None
-            if t == 1:
-                mask = self._create_relation_mask(entities, self.num_relation, facts, relation2id, reverse_relation2id)
             # print('t1', time.time() - t1)
             # insert input token embedding, previous hidden and previous cell states
             # receive output tensor (predictions) and new hidden and cell states
@@ -221,8 +226,8 @@ class RelReasoner(nn.Module):
             # decide if we are going to use teacher forcing or not
             teacher_force = random.random() < teacher_forcing_ratio
 
-            if mask is not None:
-                output = output * mask
+            # if t == 1:
+            #     output = output * mask
 
             # get the highest predicted token from our predictions
             top1 = output.argmax(1)

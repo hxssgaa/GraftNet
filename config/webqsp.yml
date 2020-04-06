@@ -9,12 +9,12 @@ test_documents: 'documents.json'
 fact_data: "datasets/webqsp/facts_new.json"
 
 word2id: 'vocab.txt'
-relation2id: 'relations.txt'
+relation2id: 'relations_decoder.txt'
 entity2id: 'entities.txt'
 word_emb_file: "word_emb_300d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_300d.npy"
+relation_emb_file: "relation_emb_decoder_300d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 
 to_save_model: True
@@ -22,7 +22,7 @@ save_model_file: "model/webqsp/best_model_hybrid"
 pred_file: "model/webqsp/pred_hybrid"
 load_model_file: #"model/webqsp/best_model_hybrid"
 save_fpnet_model_file: "model/webqsp/best_relreasoner_1_2"
-load_fpnet_model_file: "model/webqsp/best_relreasoner_1_1"
+load_fpnet_model_file: #"model/webqsp/best_relreasoner_1_1"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 
 # graph options
@@ -30,7 +30,7 @@ fact_dropout: 0.1
 use_kb: True
 use_doc: False
 
-num_layer: 3
+num_layer: 2
 max_query_word: 20
 max_document_word: 50
 num_hop: 2
@@ -44,12 +44,12 @@ use_inverse_relation: False
 test_batch_size: 1
 
 # optimization
-num_epoch: 100
-batch_size: 10
+num_epoch: 300
+batch_size: 20
 gradient_clip: 1
-learning_rate: 0.0001
-lstm_dropout: 0.5
-linear_dropout: 0.4
+learning_rate: 0.003
+lstm_dropout: 0.3
+linear_dropout: 0.2
 is_debug: False
 
 
