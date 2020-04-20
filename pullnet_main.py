@@ -269,10 +269,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
             continue
         rel_mapping_dict = rel_mapping[sample['ID']]
         sample['rel_map'] = rel_mapping_dict
-        if num_hop == 1:
-            prev_entities = {k: {k} for k in sample['entities']}
-        else:
-            prev_entities = sample['entities_%d' % (num_hop - 1)]
+        prev_entities = {k: {k} for k in sample['entities']}
         next_entities = dict()
         for k in prev_entities:
             if k not in rel_mapping_dict:
@@ -525,18 +522,10 @@ def prediction_iterative_chain(cfg):
             #         avg_hit_at_one += 1
             # total_hit_at_one += 1
             entities = e['entities']
-            entity2rel_chain = dict()
             entity2answers = dict()
             final_answers = set()
             min_answers = 1000000000
             for entity in entities:
-                for hop in range(T, 0, -1):
-                    if 'rel_map_%d' % hop not in e:
-                        continue
-                    rel_map = e['rel_map_%d' % hop]
-                    if entity in rel_map and rel_map[entity]:
-                        entity2rel_chain[entity] = rel_map[entity]
-                        break
                 for hop in range(T, 0, -1):
                     if 'entities_%d' % hop not in e:
                         continue
@@ -573,17 +562,17 @@ def prediction_iterative_chain(cfg):
             avg_hit_at_one += hit_at_one
             total_hit_at_one += 1
 
-            if 'rel_chain_map' in e and e['rel_chain_map']:
-                last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
-                last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
-                predicted_chain = None
-                for i in range(4, 0, -1):
-                    if ('rel_map_%d' % i) in e:
-                        predicted_chain = e['rel_map_%d' % i]
-                        break
-                if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
-                    avg_interpretability += 1
-            e['pred_answers'] = final_answers
+            # if 'rel_chain_map' in e and e['rel_chain_map']:
+            #     last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
+            #     last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
+            #     predicted_chain = None
+            #     for i in range(4, 0, -1):
+            #         if ('rel_map_%d' % i) in e:
+            #             predicted_chain = e['rel_map_%d' % i]
+            #             break
+            #     if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
+            #         avg_interpretability += 1
+            # e['pred_answers'] = final_answers
         print('=====================type%s=======================' % k)
         print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
         print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
