@@ -19,7 +19,7 @@ to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid2"
 pred_file: "model/complexwebq/pred_hybrid"
 load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner_14_4"
+save_fpnet_model_file: #"model/complexwebq/best_relreasoner_14_4"
 load_fpnet_model_file: "model/complexwebq/best_relreasoner_14_3"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 load_entity_model_file:
@@ -43,7 +43,7 @@ use_inverse_relation: False
 
 # optimization
 num_epoch: 150
-batch_size: 80
+batch_size: 40
 test_batch_size: 20
 gradient_clip: 1
 learning_rate: 0.0001

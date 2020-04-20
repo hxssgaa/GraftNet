@@ -1,0 +1,55 @@
+name: 'webqsp'
+data_folder: 'datasets/webqsp/'
+train_data: 'train_new.json'
+train_documents: 'documents.json'
+dev_data: 'dev_new.json'
+dev_documents: 'documents.json'
+test_data: 'test_new.json'
+test_documents: 'documents.json'
+fact_data: "datasets/webqsp/facts_new2.json"
+
+word2id: 'vocab.txt'
+relation2id: 'relations.txt'
+entity2id: 'entities.txt'
+word_emb_file: "word_emb_300d.npy"
+entity_emb_file: #"entity_emb_100d.npy"
+entity_kge_file: #"entity_kge_100d.npy"
+relation_emb_file: "relation_emb_300d.npy"
+relation_kge_file: #"relation_kge_100d.npy"
+
+to_save_model: True
+save_model_file: "model/webqsp/best_model_hybrid"
+pred_file: "model/webqsp/pred_hybrid"
+load_model_file: #"model/webqsp/best_model_hybrid"
+save_fpnet_model_file: "model/webqsp/best_relreasoner_1_2"
+load_fpnet_model_file: "model/webqsp/best_relreasoner_1_1"
+save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
+
+# graph options
+fact_dropout: 0.1
+use_kb: True
+use_doc: False
+
+num_layer: 3
+max_query_word: 10
+max_document_word: 50
+num_hop: 2
+
+entity_dim: 300
+word_dim: 300
+kge_dim: 100
+pagerank_lambda: 0.8
+fact_scale: 3
+use_inverse_relation: False
+test_batch_size: 1
+
+# optimization
+num_epoch: 200
+batch_size: 10
+gradient_clip: 1
+learning_rate: 0.0001
+lstm_dropout: 0.3
+linear_dropout: 0.2
+is_debug: False
+
+

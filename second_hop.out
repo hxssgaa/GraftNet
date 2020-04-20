@@ -1,0 +1,1032 @@
+/home/hxssgaa/anaconda3/bin/python /home/hxssgaa/workstation/Developer/PullNet/GraftNet/pullnet_main.py --train-relreasoner config/complexwebq.yml
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorflow/python/framework/dtypes.py:516: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_qint8 = np.dtype([("qint8", np.int8, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorflow/python/framework/dtypes.py:517: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_quint8 = np.dtype([("quint8", np.uint8, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorflow/python/framework/dtypes.py:518: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_qint16 = np.dtype([("qint16", np.int16, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorflow/python/framework/dtypes.py:519: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_quint16 = np.dtype([("quint16", np.uint16, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorflow/python/framework/dtypes.py:520: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_qint32 = np.dtype([("qint32", np.int32, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorflow/python/framework/dtypes.py:525: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  np_resource = np.dtype([("resource", np.ubyte, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:541: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_qint8 = np.dtype([("qint8", np.int8, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:542: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_quint8 = np.dtype([("quint8", np.uint8, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:543: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_qint16 = np.dtype([("qint16", np.int16, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:544: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_quint16 = np.dtype([("quint16", np.uint16, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:545: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  _np_qint32 = np.dtype([("qint32", np.int32, 1)])
+/home/hxssgaa/anaconda3/lib/python3.7/site-packages/tensorboard/compat/tensorflow_stub/dtypes.py:550: FutureWarning: Passing (type, 1) or '1type' as a synonym of type is deprecated; in a future version of numpy, it will be understood as (type, (1,)) / '(1,)type'.
+  np_resource = np.dtype([("resource", np.ubyte, 1)])
+loading data from datasets/complexwebq/complex_train_processed_new2.json
+100%|██████████| 27639/27639 [00:00<00:00, 123122.51it/s]
+max_local_path_rel: 352
+building word index ...
+preparing data ...
+41923it [00:24, 1716.77it/s]
+avg_total_words_recall 0.9345625710628216
+avg_question_words_recall 0.6742892941572478
+loading data from datasets/complexwebq/complex_dev_processed_new2.json
+100%|██████████| 3519/3519 [00:00<00:00, 146803.35it/s]
+max_local_path_rel: 308
+building word index ...
+preparing data ...
+5399it [00:03, 1752.67it/s]
+avg_total_words_recall 0.9335370747669322
+avg_question_words_recall 0.6737881705466897
+loaded relation_emb
+load word emb
+loading model from model/complexwebq/best_relreasoner_14_1
+  0%|          | 0/524 [00:00<?, ?it/s]None 90000
+None 300
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+None 360000
+None 360000
+None 1200
+None 1200
+epoch 0
+100%|██████████| 524/524 [01:40<00:00,  5.23it/s]
+avg_hit_at_one 0.4424618320610688
+avg_training_loss 0.013483599968474955
+max_training_acc 1.0
+avg_training_recall 0.6450978053435119
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.20it/s]
+avg_loss 0.007176544719815365
+max_acc 1.0
+avg_hit_at_one 0.5996282527881034
+avg_recall 0.8031598513011156
+epoch 1
+100%|██████████| 524/524 [01:40<00:00,  5.22it/s]
+avg_hit_at_one 0.6436545801526715
+avg_training_loss 0.00579816976363081
+max_training_acc 1.0
+avg_training_recall 0.7990696564885494
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.59it/s]
+avg_loss 0.00568313423075045
+max_acc 1.0
+avg_hit_at_one 0.7078066914498138
+avg_recall 0.8581784386617096
+epoch 2
+100%|██████████| 524/524 [01:44<00:00,  5.01it/s]
+avg_hit_at_one 0.7111402671755721
+avg_training_loss 0.004758781298483146
+max_training_acc 1.0
+avg_training_recall 0.8482466603053432
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.41it/s]
+avg_loss 0.004833108337845335
+max_acc 1.0
+avg_hit_at_one 0.760223048327138
+avg_recall 0.8866171003717468
+epoch 3
+100%|██████████| 524/524 [01:44<00:00,  5.02it/s]
+avg_hit_at_one 0.752862595419847
+avg_training_loss 0.004067285427155385
+max_training_acc 1.0
+avg_training_recall 0.8830112913486
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.52it/s]
+avg_loss 0.004184517960088349
+max_acc 1.0
+avg_hit_at_one 0.7959107806691452
+avg_recall 0.907806691449814
+epoch 4
+100%|██████████| 524/524 [01:44<00:00,  5.01it/s]
+avg_hit_at_one 0.7870229007633591
+avg_training_loss 0.0035747142583273978
+max_training_acc 1.0
+avg_training_recall 0.9022503180661579
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.49it/s]
+avg_loss 0.003700540289386664
+max_acc 1.0
+avg_hit_at_one 0.8156133828996281
+avg_recall 0.9193308550185874
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 5
+100%|██████████| 524/524 [01:44<00:00,  5.02it/s]
+avg_hit_at_one 0.8122614503816791
+avg_training_loss 0.003179306597386679
+max_training_acc 1.0
+avg_training_recall 0.9173346055979642
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.68it/s]
+avg_loss 0.0034739802408440654
+max_acc 1.0
+avg_hit_at_one 0.8355018587360596
+avg_recall 0.9253717472118954
+epoch 6
+100%|██████████| 524/524 [01:44<00:00,  5.02it/s]
+avg_hit_at_one 0.8311307251908396
+avg_training_loss 0.002879220437798791
+max_training_acc 1.0
+avg_training_recall 0.9279182569974556
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 41.97it/s]
+avg_loss 0.0033024319225349237
+max_acc 1.0
+avg_hit_at_one 0.8407063197026025
+avg_recall 0.9289962825278807
+epoch 7
+100%|██████████| 524/524 [01:45<00:00,  4.97it/s]
+avg_hit_at_one 0.8451335877862588
+avg_training_loss 0.002629162212042849
+max_training_acc 1.0
+avg_training_recall 0.9370149491094143
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.83it/s]
+avg_loss 0.003087374514798014
+max_acc 1.0
+avg_hit_at_one 0.8490706319702604
+avg_recall 0.9383828996282514
+epoch 8
+100%|██████████| 524/524 [01:44<00:00,  4.99it/s]
+avg_hit_at_one 0.8562977099236638
+avg_training_loss 0.0024389931638831744
+max_training_acc 1.0
+avg_training_recall 0.9415394402035623
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 42.57it/s]
+avg_loss 0.0030701491235972634
+max_acc 1.0
+avg_hit_at_one 0.8535315985130114
+avg_recall 0.9393122676579911
+epoch 9
+100%|██████████| 524/524 [01:44<00:00,  5.02it/s]
+avg_hit_at_one 0.8668893129770994
+avg_training_loss 0.0022814724374853983
+max_training_acc 1.0
+avg_training_recall 0.946711991094147
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.20it/s]
+avg_loss 0.002829635765247279
+max_acc 1.0
+avg_hit_at_one 0.8665427509293685
+avg_recall 0.9453531598513
+epoch 10
+100%|██████████| 524/524 [01:43<00:00,  5.07it/s]
+avg_hit_at_one 0.8733778625954207
+avg_training_loss 0.0021468831178686008
+max_training_acc 1.0
+avg_training_recall 0.9506361323155206
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.68it/s]
+avg_loss 0.0028573572327842463
+max_acc 1.0
+avg_hit_at_one 0.8618959107806691
+avg_recall 0.9457249070631961
+epoch 11
+100%|██████████| 524/524 [01:44<00:00,  4.99it/s]
+avg_hit_at_one 0.8809160305343525
+avg_training_loss 0.002031755598438797
+max_training_acc 1.0
+avg_training_recall 0.9546914758269724
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 40.16it/s]
+avg_loss 0.002781387248375543
+max_acc 1.0
+avg_hit_at_one 0.8672862453531602
+avg_recall 0.947211895910779
+epoch 12
+100%|██████████| 524/524 [01:45<00:00,  4.97it/s]
+avg_hit_at_one 0.8874761450381683
+avg_training_loss 0.0019188739470684304
+max_training_acc 1.0
+avg_training_recall 0.9582895992366411
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.68it/s]
+avg_loss 0.00279395519529658
+max_acc 1.0
+avg_hit_at_one 0.8711895910780669
+avg_recall 0.9476765799256498
+epoch 13
+100%|██████████| 524/524 [01:46<00:00,  4.91it/s]
+avg_hit_at_one 0.8949188931297718
+avg_training_loss 0.001820331170443154
+max_training_acc 1.0
+avg_training_recall 0.9617485687022891
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.07it/s]
+avg_loss 0.0027583571006651046
+max_acc 1.0
+avg_hit_at_one 0.8741635687732343
+avg_recall 0.9497211895910765
+epoch 14
+100%|██████████| 524/524 [01:45<00:00,  4.98it/s]
+avg_hit_at_one 0.8995944656488547
+avg_training_loss 0.001747407237861398
+max_training_acc 1.0
+avg_training_recall 0.9633269720101785
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.31it/s]
+avg_loss 0.002741130534992259
+max_acc 1.0
+avg_hit_at_one 0.8758364312267658
+avg_recall 0.9497211895910773
+epoch 15
+100%|██████████| 524/524 [01:46<00:00,  4.93it/s]
+avg_hit_at_one 0.9013835877862596
+avg_training_loss 0.001680742542904567
+max_training_acc 1.0
+avg_training_recall 0.9653029580152684
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 40.86it/s]
+avg_loss 0.0026843684894676738
+max_acc 1.0
+avg_hit_at_one 0.8825278810408923
+avg_recall 0.9551115241635676
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 16
+100%|██████████| 524/524 [01:47<00:00,  4.88it/s]
+avg_hit_at_one 0.905486641221374
+avg_training_loss 0.0016137757882891748
+max_training_acc 1.0
+avg_training_recall 0.9687261450381688
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.51it/s]
+avg_loss 0.002630468008166753
+max_acc 1.0
+avg_hit_at_one 0.8804832713754652
+avg_recall 0.9529739776951661
+epoch 17
+100%|██████████| 524/524 [01:46<00:00,  4.92it/s]
+avg_hit_at_one 0.9108540076335887
+avg_training_loss 0.00154609180231959
+max_training_acc 1.0
+avg_training_recall 0.9706544211195941
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.01it/s]
+avg_loss 0.002746848679516814
+max_acc 1.0
+avg_hit_at_one 0.8791821561338288
+avg_recall 0.9525092936802962
+epoch 18
+100%|██████████| 524/524 [01:43<00:00,  5.06it/s]
+avg_hit_at_one 0.9129770992366418
+avg_training_loss 0.0015062442468612575
+max_training_acc 1.0
+avg_training_recall 0.9724793256997469
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.24it/s]
+avg_loss 0.0027183604041759496
+max_acc 1.0
+avg_hit_at_one 0.8849442379182157
+avg_recall 0.954368029739776
+epoch 19
+100%|██████████| 524/524 [01:42<00:00,  5.13it/s]
+avg_hit_at_one 0.9161259541984735
+avg_training_loss 0.0014487027344142818
+max_training_acc 1.0
+avg_training_recall 0.9729484732824443
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.19it/s]
+avg_loss 0.0026793444928907132
+max_acc 1.0
+avg_hit_at_one 0.8873605947955392
+avg_recall 0.9527881040892183
+epoch 20
+100%|██████████| 524/524 [01:43<00:00,  5.06it/s]
+avg_hit_at_one 0.919775763358779
+avg_training_loss 0.0013945442762133445
+max_training_acc 1.0
+avg_training_recall 0.9739623091603079
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 42.84it/s]
+avg_loss 0.002740445930200138
+max_acc 1.0
+avg_hit_at_one 0.8840148698884761
+avg_recall 0.9508364312267645
+epoch 21
+100%|██████████| 524/524 [01:43<00:00,  5.04it/s]
+avg_hit_at_one 0.9208015267175563
+avg_training_loss 0.0013529174356967503
+max_training_acc 1.0
+avg_training_recall 0.975596374045803
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.75it/s]
+avg_loss 0.002708105879672035
+max_acc 1.0
+avg_hit_at_one 0.8907063197026025
+avg_recall 0.9547397769516718
+epoch 22
+100%|██████████| 524/524 [01:43<00:00,  5.06it/s]
+avg_hit_at_one 0.923878816793893
+avg_training_loss 0.001305325630272895
+max_training_acc 1.0
+avg_training_recall 0.9773338104325722
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.13it/s]
+avg_loss 0.0028054071238001964
+max_acc 1.0
+avg_hit_at_one 0.8851301115241633
+avg_recall 0.9529739776951663
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 23
+100%|██████████| 524/524 [01:43<00:00,  5.07it/s]
+avg_hit_at_one 0.9270753816793886
+avg_training_loss 0.001272502031580737
+max_training_acc 1.0
+avg_training_recall 0.9776081424936417
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.98it/s]
+avg_loss 0.0026560636685735856
+max_acc 1.0
+avg_hit_at_one 0.8914498141263937
+avg_recall 0.9577137546468395
+epoch 24
+100%|██████████| 524/524 [01:42<00:00,  5.11it/s]
+avg_hit_at_one 0.9289122137404586
+avg_training_loss 0.0012270096510729597
+max_training_acc 1.0
+avg_training_recall 0.9796119592875343
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.54it/s]
+avg_loss 0.0027026469939152257
+max_acc 1.0
+avg_hit_at_one 0.8892193308550185
+avg_recall 0.9546468401486978
+epoch 25
+100%|██████████| 524/524 [01:43<00:00,  5.05it/s]
+avg_hit_at_one 0.9321564885496177
+avg_training_loss 0.0011891889531842525
+max_training_acc 1.0
+avg_training_recall 0.9801486959287563
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.83it/s]
+avg_loss 0.0027214679553676144
+max_acc 1.0
+avg_hit_at_one 0.890334572490706
+avg_recall 0.9567843866170993
+epoch 26
+100%|██████████| 524/524 [01:42<00:00,  5.09it/s]
+avg_hit_at_one 0.9345419847328246
+avg_training_loss 0.0011603095333108798
+max_training_acc 1.0
+avg_training_recall 0.9816277035623441
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.73it/s]
+avg_loss 0.002751508995821888
+max_acc 1.0
+avg_hit_at_one 0.8938661710037169
+avg_recall 0.9565985130111511
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 27
+100%|██████████| 524/524 [01:42<00:00,  5.10it/s]
+avg_hit_at_one 0.9352576335877859
+avg_training_loss 0.0011321316318891282
+max_training_acc 1.0
+avg_training_recall 0.9818344465648884
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 44.72it/s]
+avg_loss 0.0027902228803179992
+max_acc 1.0
+avg_hit_at_one 0.8903345724907062
+avg_recall 0.9546468401486975
+epoch 28
+100%|██████████| 524/524 [01:42<00:00,  5.13it/s]
+avg_hit_at_one 0.9387881679389307
+avg_training_loss 0.0011032864073502924
+max_training_acc 1.0
+avg_training_recall 0.9828323791348625
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.24it/s]
+avg_loss 0.0026885819691121085
+max_acc 1.0
+avg_hit_at_one 0.8931226765799255
+avg_recall 0.9577137546468387
+epoch 29
+100%|██████████| 524/524 [01:42<00:00,  5.09it/s]
+avg_hit_at_one 0.9401001908396946
+avg_training_loss 0.0010728747602254472
+max_training_acc 1.0
+avg_training_recall 0.9832856234096725
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.94it/s]
+avg_loss 0.002883130855040443
+max_acc 1.0
+avg_hit_at_one 0.8966542750929366
+avg_recall 0.9589219330855006
+epoch 30
+100%|██████████| 524/524 [01:38<00:00,  5.32it/s]
+avg_hit_at_one 0.9429150763358775
+avg_training_loss 0.0010406638129937767
+max_training_acc 1.0
+avg_training_recall 0.9849634223918606
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.26it/s]
+avg_loss 0.0027564000277660442
+max_acc 1.0
+avg_hit_at_one 0.8920074349442378
+avg_recall 0.9578066914498128
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 31
+100%|██████████| 524/524 [01:38<00:00,  5.33it/s]
+avg_hit_at_one 0.9432490458015269
+avg_training_loss 0.0010113115574611805
+max_training_acc 1.0
+avg_training_recall 0.9856432888040747
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.04it/s]
+avg_loss 0.0027339338737901687
+max_acc 1.0
+avg_hit_at_one 0.8994423791821562
+avg_recall 0.9590148698884744
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 32
+100%|██████████| 524/524 [01:39<00:00,  5.25it/s]
+avg_hit_at_one 0.9452290076335876
+avg_training_loss 0.0009858855961103043
+max_training_acc 1.0
+avg_training_recall 0.9864424300254477
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.93it/s]
+avg_loss 0.00292306106349758
+max_acc 1.0
+avg_hit_at_one 0.8949814126394053
+avg_recall 0.9578066914498132
+epoch 33
+100%|██████████| 524/524 [01:42<00:00,  5.10it/s]
+avg_hit_at_one 0.9460162213740455
+avg_training_loss 0.0009727924111861743
+max_training_acc 1.0
+avg_training_recall 0.9861362913486046
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.77it/s]
+avg_loss 0.002987467510618336
+max_acc 1.0
+avg_hit_at_one 0.896282527881041
+avg_recall 0.9582713754646824
+epoch 34
+100%|██████████| 524/524 [01:41<00:00,  5.14it/s]
+avg_hit_at_one 0.9490696564885494
+avg_training_loss 0.0009321646950605773
+max_training_acc 1.0
+avg_training_recall 0.9871381997455501
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 43.52it/s]
+avg_loss 0.0029239865542890465
+max_acc 1.0
+avg_hit_at_one 0.8947955390334573
+avg_recall 0.9582713754646827
+epoch 35
+100%|██████████| 524/524 [01:39<00:00,  5.26it/s]
+avg_hit_at_one 0.9502385496183204
+avg_training_loss 0.000913034177388381
+max_training_acc 1.0
+avg_training_recall 0.9881997455470769
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.09it/s]
+avg_loss 0.0030418799563696097
+max_acc 1.0
+avg_hit_at_one 0.894981412639405
+avg_recall 0.9560408921933069
+epoch 36
+100%|██████████| 524/524 [01:41<00:00,  5.16it/s]
+avg_hit_at_one 0.9527433206106853
+avg_training_loss 0.0008772731033724356
+max_training_acc 1.0
+avg_training_recall 0.9890346692111995
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 41.98it/s]
+avg_loss 0.002941926206637168
+max_acc 1.0
+avg_hit_at_one 0.9014869888475834
+avg_recall 0.9588289962825265
+epoch 37
+100%|██████████| 524/524 [01:41<00:00,  5.18it/s]
+avg_hit_at_one 0.9536259541984726
+avg_training_loss 0.0008660294767047052
+max_training_acc 1.0
+avg_training_recall 0.9895833333333365
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.39it/s]
+avg_loss 0.003130731072409529
+max_acc 1.0
+avg_hit_at_one 0.8938661710037179
+avg_recall 0.9567843866170991
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 38
+100%|██████████| 524/524 [01:41<00:00,  5.16it/s]
+avg_hit_at_one 0.9543416030534346
+avg_training_loss 0.0008407152920860517
+max_training_acc 1.0
+avg_training_recall 0.9903347646310465
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 44.89it/s]
+avg_loss 0.003033207627859122
+max_acc 1.0
+avg_hit_at_one 0.8910780669144974
+avg_recall 0.9597583643122665
+epoch 39
+100%|██████████| 524/524 [01:39<00:00,  5.25it/s]
+avg_hit_at_one 0.9564646946564881
+avg_training_loss 0.0008200720766657441
+max_training_acc 1.0
+avg_training_recall 0.9901797073791376
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.98it/s]
+avg_loss 0.0030125554313366132
+max_acc 1.0
+avg_hit_at_one 0.8938661710037175
+avg_recall 0.9592007434944222
+epoch 40
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9576574427480913
+avg_training_loss 0.000796503024482353
+max_training_acc 1.0
+avg_training_recall 0.9914320928753213
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.23it/s]
+avg_loss 0.0029979180943372433
+max_acc 1.0
+avg_hit_at_one 0.8985130111524161
+avg_recall 0.960130111524162
+epoch 41
+100%|██████████| 524/524 [01:39<00:00,  5.27it/s]
+avg_hit_at_one 0.9584208015267164
+avg_training_loss 0.000779876240917023
+max_training_acc 1.0
+avg_training_recall 0.9913963104325735
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.03it/s]
+avg_loss 0.00308144533854082
+max_acc 1.0
+avg_hit_at_one 0.9013011152416357
+avg_recall 0.960873605947954
+epoch 42
+100%|██████████| 524/524 [01:38<00:00,  5.32it/s]
+avg_hit_at_one 0.9598759541984728
+avg_training_loss 0.0007637800285677099
+max_training_acc 1.0
+avg_training_recall 0.9916587150127257
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.44it/s]
+avg_loss 0.003121635966137249
+max_acc 1.0
+avg_hit_at_one 0.8996282527881042
+avg_recall 0.9602230483271361
+epoch 43
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9604723282442756
+avg_training_loss 0.0007477446985713167
+max_training_acc 1.0
+avg_training_recall 0.9924896628498753
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.36it/s]
+avg_loss 0.0030134068451150523
+max_acc 1.0
+avg_hit_at_one 0.9029739776951667
+avg_recall 0.959944237918214
+epoch 44
+100%|██████████| 524/524 [01:38<00:00,  5.33it/s]
+avg_hit_at_one 0.96364503816794
+avg_training_loss 0.000708573472504824
+max_training_acc 1.0
+avg_training_recall 0.9932410941475851
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.66it/s]
+avg_loss 0.0031532919711938774
+max_acc 1.0
+avg_hit_at_one 0.8957249070631963
+avg_recall 0.9600371747211883
+epoch 45
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.96319179389313
+avg_training_loss 0.0007106540808503032
+max_training_acc 1.0
+avg_training_recall 0.9930621819338447
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.25it/s]
+avg_loss 0.003222617650582333
+max_acc 1.0
+avg_hit_at_one 0.8973977695167283
+avg_recall 0.9573420074349431
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 46
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9653625954198483
+avg_training_loss 0.0006951539701849261
+max_training_acc 1.0
+avg_training_recall 0.9933444656488573
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.14it/s]
+avg_loss 0.003146112734114106
+max_acc 1.0
+avg_hit_at_one 0.9009293680297397
+avg_recall 0.9607806691449798
+epoch 47
+100%|██████████| 524/524 [01:39<00:00,  5.28it/s]
+avg_hit_at_one 0.9652433206106872
+avg_training_loss 0.0006737632490394598
+max_training_acc 1.0
+avg_training_recall 0.9940203562340989
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.37it/s]
+avg_loss 0.0031515230915504728
+max_acc 1.0
+avg_hit_at_one 0.9016728624535315
+avg_recall 0.9589219330855008
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 48
+100%|██████████| 524/524 [01:38<00:00,  5.32it/s]
+avg_hit_at_one 0.9660066793893131
+avg_training_loss 0.0006557279477475339
+max_training_acc 1.0
+avg_training_recall 0.9936068702290102
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 47.87it/s]
+avg_loss 0.0032550259488219845
+max_acc 1.0
+avg_hit_at_one 0.8990706319702598
+avg_recall 0.9568773234200733
+epoch 49
+100%|██████████| 524/524 [01:41<00:00,  5.18it/s]
+avg_hit_at_one 0.9672709923664129
+avg_training_loss 0.0006496838600642913
+max_training_acc 1.0
+avg_training_recall 0.9939686704834626
+validating ...
+100%|██████████| 269/269 [00:06<00:00, 40.76it/s]
+avg_loss 0.003343685035644983
+max_acc 1.0
+avg_hit_at_one 0.8977695167286244
+avg_recall 0.9583643122676565
+epoch 50
+100%|██████████| 524/524 [01:43<00:00,  5.05it/s]
+avg_hit_at_one 0.967557251908397
+avg_training_loss 0.0006336323448390396
+max_training_acc 1.0
+avg_training_recall 0.9944656488549636
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.08it/s]
+avg_loss 0.003233172343311116
+max_acc 1.0
+avg_hit_at_one 0.8999999999999997
+avg_recall 0.9619888475836416
+epoch 51
+100%|██████████| 524/524 [01:38<00:00,  5.34it/s]
+avg_hit_at_one 0.9689885496183215
+avg_training_loss 0.0006093576265055107
+max_training_acc 1.0
+avg_training_recall 0.9952488867684495
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.49it/s]
+avg_loss 0.003398778996374537
+max_acc 1.0
+avg_hit_at_one 0.902602230483271
+avg_recall 0.9571561338289944
+epoch 52
+100%|██████████| 524/524 [01:38<00:00,  5.31it/s]
+avg_hit_at_one 0.9703959923664135
+avg_training_loss 0.0005864963555264861
+max_training_acc 1.0
+avg_training_recall 0.9950779262086537
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.53it/s]
+avg_loss 0.0033575446134220337
+max_acc 1.0
+avg_hit_at_one 0.9014869888475837
+avg_recall 0.9596654275092921
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 53
+100%|██████████| 524/524 [01:40<00:00,  5.19it/s]
+avg_hit_at_one 0.9696564885496205
+avg_training_loss 0.0005908526229094056
+max_training_acc 1.0
+avg_training_recall 0.9956743002544549
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.79it/s]
+avg_loss 0.003401893326868708
+max_acc 1.0
+avg_hit_at_one 0.9014869888475835
+avg_recall 0.9615241635687721
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 54
+100%|██████████| 524/524 [01:37<00:00,  5.35it/s]
+avg_hit_at_one 0.9725190839694678
+avg_training_loss 0.0005629329997375216
+max_training_acc 1.0
+avg_training_recall 0.9957379134860064
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 47.81it/s]
+avg_loss 0.003383926876836508
+max_acc 1.0
+avg_hit_at_one 0.8996282527881037
+avg_recall 0.9595724907063187
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 55
+100%|██████████| 524/524 [01:42<00:00,  5.13it/s]
+avg_hit_at_one 0.9717557251908414
+avg_training_loss 0.0005550842969576146
+max_training_acc 1.0
+avg_training_recall 0.9960997137404599
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.31it/s]
+avg_loss 0.0034108531336087557
+max_acc 1.0
+avg_hit_at_one 0.8972118959107808
+avg_recall 0.9589219330855008
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 56
+100%|██████████| 524/524 [01:39<00:00,  5.25it/s]
+avg_hit_at_one 0.9737118320610705
+avg_training_loss 0.0005492351368860118
+max_training_acc 1.0
+avg_training_recall 0.9954317748091623
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.43it/s]
+avg_loss 0.003454076539663483
+max_acc 1.0
+avg_hit_at_one 0.9026022304832713
+avg_recall 0.9631040892193296
+epoch 57
+100%|██████████| 524/524 [01:39<00:00,  5.25it/s]
+avg_hit_at_one 0.9742366412213759
+avg_training_loss 0.00053176164498163
+max_training_acc 1.0
+avg_training_recall 0.9964376590330799
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 47.49it/s]
+avg_loss 0.0035656719727838035
+max_acc 1.0
+avg_hit_at_one 0.9024163568773236
+avg_recall 0.9590148698884742
+epoch 58
+100%|██████████| 524/524 [01:40<00:00,  5.23it/s]
+avg_hit_at_one 0.9749522900763379
+avg_training_loss 0.0005244627008538956
+max_training_acc 1.0
+avg_training_recall 0.996747773536897
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.39it/s]
+avg_loss 0.0034359883337853063
+max_acc 1.0
+avg_hit_at_one 0.9027881040892188
+avg_recall 0.957992565055761
+epoch 59
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9750954198473305
+avg_training_loss 0.0005196564202691217
+max_training_acc 1.0
+avg_training_recall 0.9969664440203576
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.58it/s]
+avg_loss 0.0036031089543280444
+max_acc 1.0
+avg_hit_at_one 0.8979553903345722
+avg_recall 0.9590148698884744
+epoch 60
+100%|██████████| 524/524 [01:39<00:00,  5.29it/s]
+avg_hit_at_one 0.9764074427480941
+avg_training_loss 0.0005034219380929126
+max_training_acc 1.0
+avg_training_recall 0.996890903307889
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.78it/s]
+avg_loss 0.003543724363928327
+max_acc 1.0
+avg_hit_at_one 0.9020446096654271
+avg_recall 0.9616171003717455
+epoch 61
+100%|██████████| 524/524 [01:39<00:00,  5.29it/s]
+avg_hit_at_one 0.9772423664122155
+avg_training_loss 0.00048439884897679596
+max_training_acc 1.0
+avg_training_recall 0.9969465648854973
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 45.55it/s]
+avg_loss 0.003624022838963173
+max_acc 1.0
+avg_hit_at_one 0.9020446096654274
+avg_recall 0.9608736059479538
+epoch 62
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9772423664122164
+avg_training_loss 0.00048261534159979515
+max_training_acc 1.0
+avg_training_recall 0.9969704198473291
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.68it/s]
+avg_loss 0.0037121441329854457
+max_acc 1.0
+avg_hit_at_one 0.903717472118959
+avg_recall 0.9609665427509283
+epoch 63
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9785066793893152
+avg_training_loss 0.00046933840919774337
+max_training_acc 1.0
+avg_training_recall 0.9970936704834619
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 47.71it/s]
+avg_loss 0.0035826043424608592
+max_acc 1.0
+avg_hit_at_one 0.9009293680297396
+avg_recall 0.9616171003717462
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 64
+100%|██████████| 524/524 [01:38<00:00,  5.31it/s]
+avg_hit_at_one 0.9794370229007658
+avg_training_loss 0.00045095008501017873
+max_training_acc 1.0
+avg_training_recall 0.9975071564885507
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 49.23it/s]
+avg_loss 0.003668445144362133
+max_acc 1.0
+avg_hit_at_one 0.9009293680297398
+avg_recall 0.9603159851301102
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 65
+100%|██████████| 524/524 [01:38<00:00,  5.31it/s]
+avg_hit_at_one 0.9792223282442782
+avg_training_loss 0.0004446588499036765
+max_training_acc 1.0
+avg_training_recall 0.997761609414759
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.36it/s]
+avg_loss 0.0037523555417902947
+max_acc 1.0
+avg_hit_at_one 0.8999999999999995
+avg_recall 0.9584572490706309
+epoch 66
+100%|██████████| 524/524 [01:39<00:00,  5.27it/s]
+avg_hit_at_one 0.9792700381679419
+avg_training_loss 0.00043659024087887456
+max_training_acc 1.0
+avg_training_recall 0.9978530534351153
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.67it/s]
+avg_loss 0.003723246439539655
+max_acc 1.0
+avg_hit_at_one 0.9001858736059478
+avg_recall 0.9579925650557608
+epoch 67
+100%|██████████| 524/524 [01:39<00:00,  5.29it/s]
+avg_hit_at_one 0.9813454198473318
+avg_training_loss 0.0004150837623060293
+max_training_acc 1.0
+avg_training_recall 0.9981035305343519
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.93it/s]
+avg_loss 0.003765292181635374
+max_acc 1.0
+avg_hit_at_one 0.9050185873605942
+avg_recall 0.9617100371747199
+epoch 68
+100%|██████████| 524/524 [01:39<00:00,  5.28it/s]
+avg_hit_at_one 0.9817748091603078
+avg_training_loss 0.0004169940466037574
+max_training_acc 1.0
+avg_training_recall 0.9979246183206116
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.71it/s]
+avg_loss 0.0037697941268829355
+max_acc 1.0
+avg_hit_at_one 0.9031598513011148
+avg_recall 0.9611524163568759
+epoch 69
+100%|██████████| 524/524 [01:38<00:00,  5.29it/s]
+avg_hit_at_one 0.981965648854965
+avg_training_loss 0.0004055377233597736
+max_training_acc 1.0
+avg_training_recall 0.9981750954198483
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.59it/s]
+avg_loss 0.0038741738405564975
+max_acc 1.0
+avg_hit_at_one 0.9000000000000001
+avg_recall 0.9595724907063184
+epoch 70
+100%|██████████| 524/524 [01:39<00:00,  5.26it/s]
+avg_hit_at_one 0.9816316793893165
+avg_training_loss 0.00039979777509259516
+max_training_acc 1.0
+avg_training_recall 0.9982387086514002
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 47.29it/s]
+avg_loss 0.003973427731502396
+max_acc 1.0
+avg_hit_at_one 0.9005576208178437
+avg_recall 0.9596654275092923
+epoch 71
+100%|██████████| 524/524 [01:38<00:00,  5.29it/s]
+avg_hit_at_one 0.9824904580152716
+avg_training_loss 0.00039243929234870646
+max_training_acc 1.0
+avg_training_recall 0.9981194338422401
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 48.87it/s]
+avg_loss 0.003919582217947267
+max_acc 1.0
+avg_hit_at_one 0.902788104089219
+avg_recall 0.9590148698884744
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 72
+100%|██████████| 524/524 [01:39<00:00,  5.29it/s]
+avg_hit_at_one 0.983540076335882
+avg_training_loss 0.00037236249129589936
+max_training_acc 1.0
+avg_training_recall 0.9985607506361333
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 49.23it/s]
+avg_loss 0.003808722404691587
+max_acc 1.0
+avg_hit_at_one 0.9040892193308547
+avg_recall 0.9601301115241624
+epoch 73
+100%|██████████| 524/524 [01:39<00:00,  5.26it/s]
+avg_hit_at_one 0.983373091603057
+avg_training_loss 0.0003694873397595797
+max_training_acc 1.0
+avg_training_recall 0.9985965330788806
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 48.22it/s]
+avg_loss 0.004002492568883417
+max_acc 1.0
+avg_hit_at_one 0.9055762081784384
+avg_recall 0.9612453531598499
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 74
+100%|██████████| 524/524 [01:39<00:00,  5.28it/s]
+avg_hit_at_one 0.9835400763358811
+avg_training_loss 0.00036526878443336643
+max_training_acc 1.0
+avg_training_recall 0.9984136450381684
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.75it/s]
+avg_loss 0.004060370426333779
+max_acc 1.0
+avg_hit_at_one 0.900929368029739
+avg_recall 0.959944237918214
+epoch 75
+100%|██████████| 524/524 [01:39<00:00,  5.26it/s]
+avg_hit_at_one 0.9849475190839746
+avg_training_loss 0.0003487366131389362
+max_training_acc 1.0
+avg_training_recall 0.9987754452926213
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.28it/s]
+avg_loss 0.003987668723230655
+max_acc 1.0
+avg_hit_at_one 0.9046468401486986
+avg_recall 0.9597583643122662
+epoch 76
+100%|██████████| 524/524 [01:39<00:00,  5.28it/s]
+avg_hit_at_one 0.9845419847328272
+avg_training_loss 0.0003557200390704017
+max_training_acc 1.0
+avg_training_recall 0.9985488231552168
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 47.93it/s]
+avg_loss 0.004020169632068317
+max_acc 1.0
+avg_hit_at_one 0.9052044609665422
+avg_recall 0.9604089219330839
+epoch 77
+100%|██████████| 524/524 [01:38<00:00,  5.30it/s]
+avg_hit_at_one 0.9853291984732864
+avg_training_loss 0.00034514940449742926
+max_training_acc 1.0
+avg_training_recall 0.9987237595419853
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 48.50it/s]
+avg_loss 0.004110120925273632
+max_acc 1.0
+avg_hit_at_one 0.9042750929368027
+avg_recall 0.9618029739776938
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 78
+100%|██████████| 524/524 [01:39<00:00,  5.29it/s]
+avg_hit_at_one 0.9852814885496223
+avg_training_loss 0.0003456275363248117
+max_training_acc 1.0
+avg_training_recall 0.9985329198473287
+validating ...
+100%|██████████| 269/269 [00:05<00:00, 46.46it/s]
+avg_loss 0.004019673601091462
+max_acc 1.0
+avg_hit_at_one 0.8996282527881035
+avg_recall 0.9600371747211881
+  0%|          | 0/524 [00:00<?, ?it/s]epoch 79
+ 78%|███████▊  | 410/524 [01:18<00:21,  5.26it/s]
+Process finished with exit code 137 (interrupted by signal 9: SIGKILL)
+
+
+36

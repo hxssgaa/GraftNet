@@ -1,0 +1,13 @@
+dev set:
+
+avg_loss 0.0021605206511930196
+max_acc 1.0
+avg_hit_at_one 0.8859778597785952
+avg_recall 0.9723247232472291
+saving model to model/simpleq/best_relreasoner
+
+test set:
+avg_loss 0.0024197568626668628
+max_acc 1.0
+avg_hit_at_one 0.8825184501845025
+avg_recall 0.969418819188198

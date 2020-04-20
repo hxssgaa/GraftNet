@@ -1,0 +1,945 @@
+epoch 0
+100%|█████████▉| 459/460 [01:08<00:00,  6.69it/s]avg_hit_at_one 0.1687318840579712
+avg_training_loss 0.034075523386506934
+max_training_acc 0.9903985507246379
+avg_training_recall 0.324236111111111
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.74it/s]
+100%|██████████| 175/175 [00:02<00:00, 62.86it/s]
+avg_loss 0.021369450432913644
+max_acc 0.9937142857142856
+avg_hit_at_one 0.21771428571428555
+avg_recall 0.36195238095238086
+saving model to model/complexwebq/best_relreasoner.6
+epoch 1
+100%|██████████| 460/460 [01:09<00:00,  6.60it/s]
+avg_hit_at_one 0.2269927536231886
+avg_training_loss 0.02104684480101518
+max_training_acc 0.9904347826086953
+avg_training_recall 0.39381038647343
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.90it/s]avg_loss 0.021232882354940686
+max_acc 0.9937142857142856
+avg_hit_at_one 0.22371428571428578
+avg_recall 0.3868571428571429
+100%|██████████| 175/175 [00:02<00:00, 62.92it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 2
+100%|█████████▉| 459/460 [01:09<00:00,  6.63it/s]avg_hit_at_one 0.2999275362318837
+avg_training_loss 0.018968692622349962
+max_training_acc 0.9903985507246376
+avg_training_recall 0.44274758454106217
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.63it/s]
+100%|██████████| 175/175 [00:02<00:00, 60.93it/s]
+avg_loss 0.01849900477166687
+max_acc 0.9937142857142856
+avg_hit_at_one 0.2945714285714285
+avg_recall 0.42304761904761895
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 3
+100%|██████████| 460/460 [01:09<00:00,  6.63it/s]
+avg_hit_at_one 0.31775362318840533
+avg_training_loss 0.018118984351420533
+max_training_acc 0.9903985507246371
+avg_training_recall 0.46118659420289854
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.27it/s]
+avg_loss 0.018195084993328368
+max_acc 0.9937142857142856
+avg_hit_at_one 0.31514285714285706
+avg_recall 0.43880952380952365
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 4
+100%|█████████▉| 459/460 [01:08<00:00,  6.66it/s]avg_hit_at_one 0.28478260869565186
+avg_training_loss 0.017891958072457626
+max_training_acc 0.9903985507246376
+avg_training_recall 0.46505736714975837
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+100%|██████████| 175/175 [00:02<00:00, 62.29it/s]
+avg_loss 0.018152900205126832
+max_acc 0.9937142857142856
+avg_hit_at_one 0.2748571428571431
+avg_recall 0.46390476190476176
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 5
+100%|██████████| 460/460 [01:08<00:00,  6.67it/s]
+avg_hit_at_one 0.2552173913043479
+avg_training_loss 0.017774777001012928
+max_training_acc 0.9903985507246379
+avg_training_recall 0.45749396135265696
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.23it/s]
+avg_loss 0.018011937311717442
+max_acc 0.9937142857142856
+avg_hit_at_one 0.2531428571428572
+avg_recall 0.45397619047619053
+epoch 6
+100%|█████████▉| 459/460 [01:08<00:00,  6.36it/s]avg_hit_at_one 0.24735507246376814
+avg_training_loss 0.017671443420745756
+max_training_acc 0.9903985507246382
+avg_training_recall 0.452273550724638
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.65it/s]
+ 99%|█████████▉| 174/175 [00:02<00:00, 57.05it/s]avg_loss 0.01798698917031288
+max_acc 0.9937142857142856
+avg_hit_at_one 0.28514285714285725
+avg_recall 0.47616666666666657
+100%|██████████| 175/175 [00:02<00:00, 59.00it/s]
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 7
+100%|██████████| 460/460 [01:10<00:00,  6.57it/s]
+avg_hit_at_one 0.26786231884057937
+avg_training_loss 0.01759671405889094
+max_training_acc 0.990434782608696
+avg_training_recall 0.4703532608695648
+validating ...
+ 97%|█████████▋| 170/175 [00:02<00:00, 62.29it/s]avg_loss 0.01794206103576081
+max_acc 0.9937142857142856
+avg_hit_at_one 0.27742857142857147
+avg_recall 0.47026190476190494
+100%|██████████| 175/175 [00:02<00:00, 61.56it/s]
+epoch 8
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+avg_hit_at_one 0.2906884057971009
+avg_training_loss 0.017465689901829413
+max_training_acc 0.9903985507246376
+avg_training_recall 0.47762379227053126
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.16it/s]avg_loss 0.017679296103971346
+max_acc 0.9937142857142856
+avg_hit_at_one 0.310857142857143
+avg_recall 0.48590476190476173
+100%|██████████| 175/175 [00:02<00:00, 62.22it/s]
+epoch 9
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.32681159420289824
+avg_training_loss 0.017012996815711907
+max_training_acc 0.9903985507246371
+avg_training_recall 0.49406099033816475
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.18it/s]avg_loss 0.01699108684701579
+max_acc 0.9937142857142856
+avg_hit_at_one 0.38314285714285723
+avg_recall 0.48488095238095225
+100%|██████████| 175/175 [00:02<00:00, 62.16it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 10
+100%|█████████▉| 459/460 [01:08<00:00,  6.67it/s]avg_hit_at_one 0.3731159420289856
+avg_training_loss 0.01652949449768209
+max_training_acc 0.9903985507246379
+avg_training_recall 0.5009692028985516
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.33it/s]
+avg_loss 0.01676768488649811
+max_acc 0.9937142857142856
+avg_hit_at_one 0.3905714285714286
+avg_recall 0.5119047619047618
+saving model to model/complexwebq/best_relreasoner.6
+epoch 11
+100%|█████████▉| 459/460 [01:08<00:00,  6.67it/s]avg_hit_at_one 0.390108695652174
+avg_training_loss 0.01631381368548002
+max_training_acc 0.9903985507246377
+avg_training_recall 0.514894323671497
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.23it/s]
+avg_loss 0.016764618344604968
+max_acc 0.9937142857142856
+avg_hit_at_one 0.3825714285714287
+avg_recall 0.5049761904761905
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 12
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.3939130434782608
+avg_training_loss 0.016203215311321875
+max_training_acc 0.9904347826086952
+avg_training_recall 0.5171407004830922
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.72it/s]avg_loss 0.01650770554052932
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4040000000000001
+avg_recall 0.5073809523809524
+100%|██████████| 175/175 [00:02<00:00, 61.64it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 13
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+avg_hit_at_one 0.4014492753623186
+avg_training_loss 0.016091631425787574
+max_training_acc 0.9904347826086951
+avg_training_recall 0.5227807971014493
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.86it/s]avg_loss 0.01645039298172508
+max_acc 0.9937142857142856
+avg_hit_at_one 0.42057142857142854
+avg_recall 0.512690476190476
+100%|██████████| 175/175 [00:02<00:00, 61.84it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 14
+100%|█████████▉| 459/460 [01:08<00:00,  6.71it/s]avg_hit_at_one 0.4153260869565215
+avg_training_loss 0.015959204534959533
+max_training_acc 0.9904347826086954
+avg_training_recall 0.5295471014492754
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.60it/s]avg_loss 0.016379182993301322
+max_acc 0.9937142857142856
+avg_hit_at_one 0.41771428571428587
+avg_recall 0.5247619047619049
+100%|██████████| 175/175 [00:02<00:00, 61.60it/s]
+epoch 15
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+avg_hit_at_one 0.42221014492753606
+avg_training_loss 0.015775508925561673
+max_training_acc 0.9903985507246378
+avg_training_recall 0.538620169082126
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.72it/s]
+avg_loss 0.016207555026880333
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4257142857142858
+avg_recall 0.5314285714285717
+saving model to model/complexwebq/best_relreasoner.6
+epoch 16
+100%|██████████| 460/460 [01:09<00:00,  6.66it/s]
+avg_hit_at_one 0.4293478260869564
+avg_training_loss 0.015625790597708977
+max_training_acc 0.9903985507246372
+avg_training_recall 0.5468961352657008
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.65it/s]avg_loss 0.01605441679911954
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4099999999999999
+avg_recall 0.5362857142857145
+100%|██████████| 175/175 [00:02<00:00, 61.82it/s]
+epoch 17
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+avg_hit_at_one 0.43659420289855055
+avg_training_loss 0.015525521477684379
+max_training_acc 0.9903985507246372
+avg_training_recall 0.5500392512077293
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.84it/s]
+avg_loss 0.015876224642353397
+max_acc 0.9937142857142856
+avg_hit_at_one 0.44599999999999984
+avg_recall 0.5388333333333334
+saving model to model/complexwebq/best_relreasoner.6
+epoch 18
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.44264492753623186
+avg_training_loss 0.015411066470424766
+max_training_acc 0.9903985507246376
+avg_training_recall 0.5537711352657
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.44it/s]
+avg_loss 0.015831269499446663
+max_acc 0.9937142857142856
+avg_hit_at_one 0.45199999999999974
+avg_recall 0.537357142857143
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 19
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.44811594202898514
+avg_training_loss 0.015310673020861072
+max_training_acc 0.990434782608696
+avg_training_recall 0.5571316425120776
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.42it/s]
+avg_loss 0.01576356950082949
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4562857142857144
+avg_recall 0.5416904761904761
+saving model to model/complexwebq/best_relreasoner.6
+epoch 20
+100%|██████████| 460/460 [01:08<00:00,  6.70it/s]
+avg_hit_at_one 0.4523188405797099
+avg_training_loss 0.015201723061340012
+max_training_acc 0.9903985507246376
+avg_training_recall 0.5612590579710144
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.37it/s]avg_loss 0.01566660214215517
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4562857142857144
+avg_recall 0.545357142857143
+100%|██████████| 175/175 [00:02<00:00, 61.47it/s]
+epoch 21
+100%|█████████▉| 459/460 [01:08<00:00,  6.68it/s]avg_hit_at_one 0.4541304347826087
+avg_training_loss 0.015069135620623179
+max_training_acc 0.990398550724637
+avg_training_recall 0.5637318840579713
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.37it/s]avg_loss 0.015445140706641334
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4740000000000001
+avg_recall 0.5502619047619048
+100%|██████████| 175/175 [00:02<00:00, 62.46it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 22
+100%|█████████▉| 459/460 [01:08<00:00,  6.64it/s]avg_hit_at_one 0.46699275362318826
+avg_training_loss 0.014866351415200726
+max_training_acc 0.9904347826086953
+avg_training_recall 0.581165458937198
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.77it/s]avg_loss 0.015236459209450654
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4957142857142858
+avg_recall 0.5760714285714287
+100%|██████████| 175/175 [00:02<00:00, 61.79it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 23
+100%|██████████| 460/460 [01:10<00:00,  6.55it/s]
+avg_hit_at_one 0.4896376811594203
+avg_training_loss 0.01452726666694102
+max_training_acc 0.9903985507246379
+avg_training_recall 0.5993870772946858
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 60.97it/s]avg_loss 0.014959298191326005
+max_acc 0.9937142857142856
+avg_hit_at_one 0.4971428571428574
+avg_recall 0.5941190476190479
+100%|██████████| 175/175 [00:02<00:00, 61.58it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 24
+100%|█████████▉| 459/460 [01:10<00:00,  6.69it/s]avg_hit_at_one 0.4999275362318846
+avg_training_loss 0.014267948071431854
+max_training_acc 0.9903985507246383
+avg_training_recall 0.6046859903381645
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.53it/s]
+100%|██████████| 175/175 [00:02<00:00, 59.37it/s]
+avg_loss 0.014682650289365223
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5074285714285717
+avg_recall 0.5944761904761905
+saving model to model/complexwebq/best_relreasoner.6
+epoch 25
+100%|██████████| 460/460 [01:12<00:00,  6.34it/s]
+avg_hit_at_one 0.5112318840579712
+avg_training_loss 0.014045621873810888
+max_training_acc 0.9903985507246377
+avg_training_recall 0.6148701690821259
+validating ...
+ 98%|█████████▊| 172/175 [00:02<00:00, 59.83it/s]avg_loss 0.014647454656660557
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5131428571428576
+avg_recall 0.6005952380952384
+100%|██████████| 175/175 [00:02<00:00, 59.83it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 26
+100%|█████████▉| 459/460 [01:10<00:00,  6.46it/s]avg_hit_at_one 0.5176086956521742
+avg_training_loss 0.013926186649452733
+max_training_acc 0.9903985507246378
+avg_training_recall 0.6189130434782606
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.52it/s]
+ 98%|█████████▊| 172/175 [00:02<00:00, 61.92it/s]avg_loss 0.014607508225100381
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5257142857142857
+avg_recall 0.6168333333333332
+100%|██████████| 175/175 [00:02<00:00, 61.55it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 27
+100%|██████████| 460/460 [01:09<00:00,  6.59it/s]
+avg_hit_at_one 0.5225724637681163
+avg_training_loss 0.013777350788207158
+max_training_acc 0.990398550724638
+avg_training_recall 0.6240157004830922
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 60.60it/s]
+avg_loss 0.014382195132119314
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5191428571428572
+avg_recall 0.6121666666666665
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 28
+100%|█████████▉| 459/460 [01:09<00:00,  6.70it/s]avg_hit_at_one 0.5271014492753628
+avg_training_loss 0.013735905390880678
+max_training_acc 0.9903985507246378
+avg_training_recall 0.6271859903381647
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.61it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.55it/s]avg_loss 0.014257065440927233
+max_acc 0.9937142857142856
+avg_hit_at_one 0.543142857142857
+avg_recall 0.6150714285714285
+100%|██████████| 175/175 [00:02<00:00, 61.62it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 29
+100%|██████████| 460/460 [01:09<00:00,  6.61it/s]
+avg_hit_at_one 0.5343115942028991
+avg_training_loss 0.013591803788490918
+max_training_acc 0.9903985507246377
+avg_training_recall 0.6371437198067632
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.93it/s]
+avg_loss 0.014152475313416549
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5422857142857146
+avg_recall 0.6191666666666666
+epoch 30
+100%|██████████| 460/460 [01:09<00:00,  6.63it/s]
+avg_hit_at_one 0.5390217391304355
+avg_training_loss 0.01346046662605975
+max_training_acc 0.9904347826086967
+avg_training_recall 0.6438647342995162
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.82it/s]avg_loss 0.014117761264954294
+max_acc 0.9937142857142856
+avg_hit_at_one 0.546
+avg_recall 0.6254761904761902
+100%|██████████| 175/175 [00:02<00:00, 61.89it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 31
+100%|█████████▉| 459/460 [01:09<00:00,  6.69it/s]avg_hit_at_one 0.5423188405797109
+avg_training_loss 0.01332451701366707
+max_training_acc 0.9903985507246372
+avg_training_recall 0.652222222222222
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.64it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.84it/s]
+avg_loss 0.013982194268277712
+max_acc 0.9937142857142856
+avg_hit_at_one 0.559428571428571
+avg_recall 0.6398809523809527
+saving model to model/complexwebq/best_relreasoner.6
+epoch 32
+100%|██████████| 460/460 [01:09<00:00,  6.62it/s]
+avg_hit_at_one 0.5453985507246378
+avg_training_loss 0.013180913840946945
+max_training_acc 0.9904347826086952
+avg_training_recall 0.6550392512077288
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.97it/s]avg_loss 0.013699301720729896
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5554285714285714
+avg_recall 0.6403095238095237
+100%|██████████| 175/175 [00:02<00:00, 62.10it/s]
+epoch 33
+100%|█████████▉| 459/460 [01:10<00:00,  6.43it/s]avg_hit_at_one 0.5530797101449275
+avg_training_loss 0.013080800263939991
+max_training_acc 0.9903985507246378
+avg_training_recall 0.6586141304347819
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.53it/s]
+ 99%|█████████▉| 174/175 [00:02<00:00, 61.69it/s]avg_loss 0.013686461980853762
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5785714285714284
+avg_recall 0.6475476190476187
+100%|██████████| 175/175 [00:02<00:00, 61.57it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 34
+100%|█████████▉| 459/460 [01:10<00:00,  6.63it/s]avg_hit_at_one 0.5837681159420295
+avg_training_loss 0.012928314448293784
+max_training_acc 0.9903985507246372
+avg_training_recall 0.6686956521739125
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.53it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.55it/s]
+avg_loss 0.013567937083010163
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5914285714285713
+avg_recall 0.6584047619047619
+saving model to model/complexwebq/best_relreasoner.6
+epoch 35
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.5904710144927542
+avg_training_loss 0.012825778319054971
+max_training_acc 0.9903985507246378
+avg_training_recall 0.6734541062801931
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.05it/s]
+avg_loss 0.013426705542951823
+max_acc 0.9937142857142856
+avg_hit_at_one 0.5940000000000001
+avg_recall 0.6596904761904765
+saving model to model/complexwebq/best_relreasoner.6
+epoch 36
+100%|█████████▉| 459/460 [01:08<00:00,  6.69it/s]avg_hit_at_one 0.5971376811594211
+avg_training_loss 0.01273487391476722
+max_training_acc 0.990398550724638
+avg_training_recall 0.676446256038648
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.94it/s]
+avg_loss 0.013387522686805044
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6011428571428569
+avg_recall 0.6642619047619045
+saving model to model/complexwebq/best_relreasoner.6
+epoch 37
+100%|██████████| 460/460 [01:08<00:00,  6.67it/s]
+avg_hit_at_one 0.6008695652173918
+avg_training_loss 0.012626928751073454
+max_training_acc 0.9903985507246381
+avg_training_recall 0.6799335748792267
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.39it/s]avg_loss 0.013175193374710424
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6037142857142859
+avg_recall 0.6727380952380951
+100%|██████████| 175/175 [00:02<00:00, 62.24it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 38
+100%|█████████▉| 459/460 [01:08<00:00,  6.71it/s]avg_hit_at_one 0.6077898550724636
+avg_training_loss 0.012535088274465955
+max_training_acc 0.990398550724638
+avg_training_recall 0.6837439613526569
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.64it/s]
+avg_loss 0.013255474822861808
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6151428571428569
+avg_recall 0.6719761904761906
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 39
+100%|█████████▉| 459/460 [01:10<00:00,  6.67it/s]avg_hit_at_one 0.6073913043478258
+avg_training_loss 0.012469265618078087
+max_training_acc 0.990434782608696
+avg_training_recall 0.6861684782608699
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.55it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.87it/s]
+avg_loss 0.013191390654870442
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6031428571428571
+avg_recall 0.6709761904761906
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 40
+100%|██████████| 460/460 [01:09<00:00,  6.66it/s]
+avg_hit_at_one 0.6123188405797102
+avg_training_loss 0.012388539534952978
+max_training_acc 0.9903985507246372
+avg_training_recall 0.689284420289855
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.59it/s]
+avg_loss 0.01316129565771137
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6045714285714284
+avg_recall 0.6691666666666666
+epoch 41
+100%|██████████| 460/460 [01:10<00:00,  6.48it/s]
+avg_hit_at_one 0.6172101449275359
+avg_training_loss 0.01231127726116582
+max_training_acc 0.9903985507246372
+avg_training_recall 0.6919716183574881
+validating ...
+100%|██████████| 175/175 [00:03<00:00, 55.33it/s]
+avg_loss 0.012874307217342514
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6185714285714285
+avg_recall 0.6877380952380954
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 42
+100%|██████████| 460/460 [01:12<00:00,  6.31it/s]
+avg_hit_at_one 0.6213043478260871
+avg_training_loss 0.012224929704857262
+max_training_acc 0.9903985507246383
+avg_training_recall 0.6914673913043485
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 60.42it/s]
+avg_loss 0.01283627623958247
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6240000000000001
+avg_recall 0.6898809523809522
+saving model to model/complexwebq/best_relreasoner.6
+epoch 43
+100%|█████████▉| 459/460 [01:09<00:00,  6.68it/s]avg_hit_at_one 0.6280797101449275
+avg_training_loss 0.01210737360600868
+max_training_acc 0.9903985507246373
+avg_training_recall 0.6958303140096614
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.58it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.52it/s]avg_loss 0.012818816514419658
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6251428571428572
+avg_recall 0.6840238095238095
+100%|██████████| 175/175 [00:02<00:00, 61.69it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 44
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.629963768115942
+avg_training_loss 0.012020984447925634
+max_training_acc 0.9903985507246387
+avg_training_recall 0.6974849033816425
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.56it/s]
+avg_loss 0.012976750638335944
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6120000000000001
+avg_recall 0.6779285714285717
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 45
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.6359782608695648
+avg_training_loss 0.011916511560506795
+max_training_acc 0.9903985507246372
+avg_training_recall 0.7009088164251202
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.61it/s]avg_loss 0.012603354909058128
+100%|██████████| 175/175 [00:02<00:00, 61.49it/s]
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6211428571428572
+avg_recall 0.6971190476190469
+epoch 46
+100%|██████████| 460/460 [01:09<00:00,  6.61it/s]
+avg_hit_at_one 0.6386231884057967
+avg_training_loss 0.011786403255942076
+max_training_acc 0.9903985507246377
+avg_training_recall 0.7065126811594207
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.43it/s]
+avg_loss 0.012625028823635408
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6299999999999999
+avg_recall 0.702690476190476
+saving model to model/complexwebq/best_relreasoner.6
+epoch 47
+100%|█████████▉| 459/460 [01:09<00:00,  6.62it/s]avg_hit_at_one 0.6436594202898547
+avg_training_loss 0.011600430556775435
+max_training_acc 0.9903985507246378
+avg_training_recall 0.7158091787439618
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.63it/s]
+ 99%|█████████▉| 174/175 [00:02<00:00, 61.22it/s]avg_loss 0.012315545614276613
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6357142857142858
+avg_recall 0.7095952380952377
+100%|██████████| 175/175 [00:02<00:00, 61.22it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 48
+100%|█████████▉| 459/460 [01:09<00:00,  6.64it/s]avg_hit_at_one 0.6536231884057971
+avg_training_loss 0.01142278247229431
+max_training_acc 0.9904347826086961
+avg_training_recall 0.7232336956521743
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.64it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.25it/s]avg_loss 0.012011750332478966
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6597142857142857
+avg_recall 0.7152142857142857
+100%|██████████| 175/175 [00:02<00:00, 61.33it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 49
+100%|██████████| 460/460 [01:09<00:00,  6.65it/s]
+avg_hit_at_one 0.6574637681159422
+avg_training_loss 0.011304303924755559
+max_training_acc 0.9904347826086951
+avg_training_recall 0.7282035024154575
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.27it/s]avg_loss 0.012050735338457992
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6631428571428568
+avg_recall 0.7267380952380954
+100%|██████████| 175/175 [00:02<00:00, 61.44it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 50
+100%|█████████▉| 459/460 [01:09<00:00,  6.63it/s]avg_hit_at_one 0.6605434782608695
+avg_training_loss 0.011156811776732944
+max_training_acc 0.990434782608696
+avg_training_recall 0.7307548309178745
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.61it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.45it/s]avg_loss 0.0119640973236944
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6628571428571428
+avg_recall 0.730428571428571
+100%|██████████| 175/175 [00:02<00:00, 61.40it/s]
+epoch 51
+100%|██████████| 460/460 [01:09<00:00,  6.62it/s]
+avg_hit_at_one 0.6635144927536226
+avg_training_loss 0.011085695733883134
+max_training_acc 0.990398550724637
+avg_training_recall 0.7353562801932362
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.85it/s]
+avg_loss 0.01176809875028474
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6628571428571429
+avg_recall 0.7398333333333333
+epoch 52
+100%|█████████▉| 459/460 [01:09<00:00,  6.65it/s]avg_hit_at_one 0.6670652173913035
+avg_training_loss 0.010934827787518177
+max_training_acc 0.990398550724637
+avg_training_recall 0.7382820048309183
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.62it/s]
+ 98%|█████████▊| 172/175 [00:02<00:00, 61.33it/s]avg_loss 0.01151896040088364
+max_acc 0.9937142857142856
+avg_hit_at_one 0.663142857142857
+avg_recall 0.7390714285714287
+100%|██████████| 175/175 [00:02<00:00, 61.04it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 53
+100%|██████████| 460/460 [01:09<00:00,  6.63it/s]
+avg_hit_at_one 0.6709782608695648
+avg_training_loss 0.010776556027121843
+max_training_acc 0.9903985507246377
+avg_training_recall 0.7434329710144928
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.27it/s]
+avg_loss 0.011418115959635803
+max_acc 0.9937142857142856
+avg_hit_at_one 0.664857142857143
+avg_recall 0.7461666666666674
+saving model to model/complexwebq/best_relreasoner.6
+epoch 54
+100%|██████████| 460/460 [01:09<00:00,  6.62it/s]
+avg_hit_at_one 0.6762318840579696
+avg_training_loss 0.010659169927036957
+max_training_acc 0.990398550724638
+avg_training_recall 0.7461956521739133
+validating ...
+ 99%|█████████▉| 174/175 [00:02<00:00, 57.54it/s]avg_loss 0.01145925917263542
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6742857142857145
+avg_recall 0.747880952380952
+100%|██████████| 175/175 [00:02<00:00, 58.69it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 55
+100%|██████████| 460/460 [01:09<00:00,  6.58it/s]
+avg_hit_at_one 0.6780434782608689
+avg_training_loss 0.010591138573363423
+max_training_acc 0.9903985507246382
+avg_training_recall 0.749320652173913
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.46it/s]
+avg_loss 0.011446249852223056
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6788571428571427
+avg_recall 0.7526428571428574
+saving model to model/complexwebq/best_relreasoner.6
+epoch 56
+100%|█████████▉| 459/460 [01:08<00:00,  6.72it/s]avg_hit_at_one 0.6831521739130427
+avg_training_loss 0.010465711881609066
+max_training_acc 0.9903985507246377
+avg_training_recall 0.7523128019323669
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.69it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.90it/s]
+avg_loss 0.011259731730180127
+max_acc 0.9937142857142856
+avg_hit_at_one 0.684
+avg_recall 0.7543571428571426
+saving model to model/complexwebq/best_relreasoner.6
+epoch 57
+100%|█████████▉| 459/460 [01:08<00:00,  6.66it/s]avg_hit_at_one 0.6872463768115938
+avg_training_loss 0.010388717962347943
+max_training_acc 0.9904347826086957
+avg_training_recall 0.7561835748792274
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.67it/s]
+ 99%|█████████▉| 174/175 [00:02<00:00, 61.13it/s]avg_loss 0.01111349543556571
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6920000000000001
+avg_recall 0.7519761904761906
+100%|██████████| 175/175 [00:02<00:00, 61.45it/s]
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 58
+100%|█████████▉| 459/460 [01:08<00:00,  6.73it/s]avg_hit_at_one 0.6923913043478251
+avg_training_loss 0.010273474357698275
+max_training_acc 0.9904347826086956
+avg_training_recall 0.7601449275362315
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.78it/s]avg_loss 0.011116389954196556
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6902857142857143
+avg_recall 0.7608333333333333
+100%|██████████| 175/175 [00:02<00:00, 62.08it/s]
+epoch 59
+100%|██████████| 460/460 [01:08<00:00,  6.68it/s]
+avg_hit_at_one 0.6957608695652169
+avg_training_loss 0.010179444399419361
+max_training_acc 0.990398550724637
+avg_training_recall 0.7665096618357489
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.12it/s]
+avg_loss 0.011127389344785894
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6902857142857138
+avg_recall 0.752690476190476
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 60
+100%|█████████▉| 459/460 [01:11<00:00,  6.54it/s]avg_hit_at_one 0.6974637681159412
+avg_training_loss 0.010110536618563143
+max_training_acc 0.9903985507246382
+avg_training_recall 0.7672312801932363
+validating ...
+100%|██████████| 460/460 [01:11<00:00,  6.46it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.42it/s]
+avg_loss 0.01100579770281911
+max_acc 0.9937142857142856
+avg_hit_at_one 0.6885714285714284
+avg_recall 0.760428571428571
+epoch 61
+100%|██████████| 460/460 [01:10<00:00,  6.50it/s]
+avg_hit_at_one 0.7011594202898539
+avg_training_loss 0.010026126827680223
+max_training_acc 0.990398550724637
+avg_training_recall 0.7689432367149759
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.19it/s]
+avg_loss 0.011073500306478568
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7085714285714283
+avg_recall 0.7619285714285716
+saving model to model/complexwebq/best_relreasoner.6
+epoch 62
+100%|██████████| 460/460 [01:08<00:00,  6.70it/s]
+avg_hit_at_one 0.7031521739130421
+avg_training_loss 0.009958383644445111
+max_training_acc 0.9904347826086952
+avg_training_recall 0.7706793478260873
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.98it/s]avg_loss 0.010794026875602348
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7085714285714282
+avg_recall 0.7637380952380949
+100%|██████████| 175/175 [00:02<00:00, 62.04it/s]
+epoch 63
+100%|█████████▉| 459/460 [01:10<00:00,  6.64it/s]avg_hit_at_one 0.7048550724637677
+avg_training_loss 0.00987774504389128
+max_training_acc 0.9903985507246379
+avg_training_recall 0.7753260869565219
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.49it/s]
+100%|██████████| 175/175 [00:02<00:00, 61.49it/s]
+avg_loss 0.011028948463499546
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7005714285714283
+avg_recall 0.7665952380952378
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 64
+100%|██████████| 460/460 [01:11<00:00,  6.42it/s]
+avg_hit_at_one 0.7093840579710142
+avg_training_loss 0.009792342260682388
+max_training_acc 0.9904347826086954
+avg_training_recall 0.7761896135265696
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 60.57it/s]
+avg_loss 0.0108694924307721
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7148571428571427
+avg_recall 0.767690476190476
+saving model to model/complexwebq/best_relreasoner.6
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 65
+100%|█████████▉| 459/460 [01:10<00:00,  6.05it/s]avg_hit_at_one 0.7117391304347823
+avg_training_loss 0.009744916121353921
+max_training_acc 0.9903985507246372
+avg_training_recall 0.7775332125603857
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.53it/s]
+100%|██████████| 175/175 [00:02<00:00, 59.09it/s]
+avg_loss 0.010739222653210163
+max_acc 0.9937142857142856
+avg_hit_at_one 0.714571428571429
+avg_recall 0.7666904761904758
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 66
+100%|██████████| 460/460 [01:10<00:00,  6.51it/s]
+avg_hit_at_one 0.7136231884057961
+avg_training_loss 0.009657170182174962
+max_training_acc 0.9903985507246378
+avg_training_recall 0.7784903381642505
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 62.04it/s]
+avg_loss 0.010658362811165197
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7074285714285713
+avg_recall 0.7753571428571427
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 67
+100%|█████████▉| 459/460 [01:10<00:00,  6.70it/s]avg_hit_at_one 0.7176449275362318
+avg_training_loss 0.009592741985967301
+max_training_acc 0.9903985507246377
+avg_training_recall 0.782306763285024
+validating ...
+100%|██████████| 460/460 [01:10<00:00,  6.51it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.33it/s]avg_loss 0.010803682184112923
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7028571428571427
+avg_recall 0.7675238095238097
+100%|██████████| 175/175 [00:02<00:00, 62.14it/s]
+epoch 68
+100%|██████████| 460/460 [01:11<00:00,  6.45it/s]
+avg_hit_at_one 0.7192028985507237
+avg_training_loss 0.009535110719582957
+max_training_acc 0.990434782608696
+avg_training_recall 0.7855253623188408
+validating ...
+ 97%|█████████▋| 169/175 [00:02<00:00, 59.58it/s]avg_loss 0.010726477522403001
+max_acc 0.9937142857142856
+avg_hit_at_one 0.710285714285714
+avg_recall 0.7730238095238096
+100%|██████████| 175/175 [00:02<00:00, 59.71it/s]
+epoch 69
+100%|██████████| 460/460 [01:12<00:00,  6.36it/s]
+avg_hit_at_one 0.7226449275362312
+avg_training_loss 0.009421275832447345
+max_training_acc 0.9903985507246377
+avg_training_recall 0.7867904589371988
+validating ...
+100%|██████████| 175/175 [00:02<00:00, 61.28it/s]
+avg_loss 0.010614526950355087
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7148571428571429
+avg_recall 0.7796666666666666
+saving model to model/complexwebq/best_relreasoner.6
+epoch 70
+100%|██████████| 460/460 [01:10<00:00,  6.57it/s]
+avg_hit_at_one 0.7249275362318833
+avg_training_loss 0.009372277882800479
+max_training_acc 0.9903985507246372
+avg_training_recall 0.7881099033816424
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.27it/s]avg_loss 0.010906240272202663
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7134285714285709
+avg_recall 0.7691666666666667
+100%|██████████| 175/175 [00:02<00:00, 62.22it/s]
+epoch 71
+100%|█████████▉| 459/460 [01:08<00:00,  6.69it/s]avg_hit_at_one 0.7298188405797088
+avg_training_loss 0.009319992709661955
+max_training_acc 0.9903985507246372
+avg_training_recall 0.7910597826086956
+validating ...
+100%|██████████| 460/460 [01:08<00:00,  6.67it/s]
+ 96%|█████████▌| 168/175 [00:02<00:00, 61.03it/s]avg_loss 0.010446654028658357
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7237142857142854
+avg_recall 0.7818809523809523
+100%|██████████| 175/175 [00:02<00:00, 61.74it/s]
+saving model to model/complexwebq/best_relreasoner.6
+epoch 72
+100%|█████████▉| 459/460 [01:09<00:00,  6.73it/s]avg_hit_at_one 0.7306521739130434
+avg_training_loss 0.009243664622266331
+max_training_acc 0.9903985507246373
+avg_training_recall 0.7921225845410619
+validating ...
+100%|██████████| 460/460 [01:09<00:00,  6.59it/s]
+100%|██████████| 175/175 [00:02<00:00, 62.14it/s]
+avg_loss 0.010429478332932507
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7217142857142858
+avg_recall 0.7835238095238094
+  0%|          | 0/460 [00:00<?, ?it/s]epoch 73
+100%|██████████| 460/460 [01:10<00:00,  6.57it/s]
+avg_hit_at_one 0.7337681159420285
+avg_training_loss 0.009164466514535572
+max_training_acc 0.9904347826086957
+avg_training_recall 0.7933182367149757
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.05it/s]avg_loss 0.010451718997210264
+max_acc 0.9937142857142856
+avg_hit_at_one 0.7222857142857142
+avg_recall 0.7871190476190472
+100%|██████████| 175/175 [00:02<00:00, 62.12it/s]
+epoch 74
+100%|██████████| 460/460 [01:09<00:00,  6.57it/s]
+avg_hit_at_one 0.7361594202898556
+avg_training_loss 0.009094891138374805
+max_training_acc 0.9903985507246372
+avg_training_recall 0.7971195652173912
+validating ...
+ 96%|█████████▌| 168/175 [00:02<00:00, 62.13it/s]avg_loss 0.010377617137772696
+max_acc 0.9937142857142856
+avg_hit_at_one 0.720285714285714
+avg_recall 0.7859047619047619
+100%|██████████| 175/175 [00:02<00:00, 61.78it/s]
+epoch 75

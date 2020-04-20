@@ -50,6 +50,8 @@ class RelReasonerDataLoader():
                 cands = v['cands'].copy()
                 data_line_copy['rel_chain_ground_truth'] = gt
                 data_line_copy['rel_chain_cands'] = cands
+                if not cands:
+                    continue
                 self.data.append(data_line_copy)
                 self.max_local_path_rel = max(self.max_local_path_rel, len(data_line_copy['rel_chain_cands']))
         print('max_local_path_rel:', self.max_local_path_rel)
@@ -129,7 +131,7 @@ class RelReasonerDataLoader():
                         self.answer_dists[idx_q][i] = 1.0
 
             if np.sum(self.answer_dists[idx_q]) == 0:
-                pass
+                print()
 
             stop_words.update(question_word_list)
 

@@ -1,0 +1,23 @@
+avg_loss 0.0005001928759077208
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 0.9998598851057867
+loading data from datasets/metaqa/3hop/test_v2.json
+div 1 14274
+building word index ...
+preparing data ...
+14274it [00:00, 26567.16it/s]
+loaded relation_emb
+load word emb
+loading model from model/wikimovie/best_relreasoner3_order
+100%|██████████| 549/549 [00:01<00:00, 508.12it/s]
+  0%|          | 0/14274 [00:00<?, ?it/s]avg_loss 0.009654469179915763
+max_acc 1.0
+avg_hit_at_one 1.0
+avg_recall 1.0
+100%|██████████| 14274/14274 [00:00<00:00, 31234.33it/s]
+testing eval hit@1: 1.0
+testing recall: 1.0
+testing f1: 0.9978291463981075
+
+Process finished with exit code 0
