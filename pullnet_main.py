@@ -389,7 +389,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     print('avg_hit_at_one', sum(eval_hit_at_one) / len(eval_hit_at_one))
     # print('avg_recall', sum(eval_recall) / len(eval_recall))
 
-    return sum(eval_loss) / len(eval_loss)
+    return sum(eval_hit_at_one) / len(eval_hit_at_one)
 
 
 def train_relreasoner(cfg, is_entity=False):
@@ -453,16 +453,16 @@ def train_relreasoner(cfg, is_entity=False):
 
             print("validating ...")
             eval_recall = inference_relreasoner(my_model, 20, valid_data, entity2id, relation2id, reverse_relation2id, cfg, is_entity, facts=facts)
-            # if not is_entity:
-            #     if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
-            #         print("saving model to", cfg['save_fpnet_model_file'])
-            #         torch.save(my_model.state_dict(), cfg['save_fpnet_model_file'])
-            #         best_dev_recall = eval_recall
-            # else:
-            #     if eval_recall > best_dev_recall and cfg['save_entity_model_file']:
-            #         print("saving model to", cfg['save_entity_model_file'])
-            #         torch.save(my_model.state_dict(), cfg['save_entity_model_file'])
-            #         best_dev_recall = eval_recall
+            if not is_entity:
+                if eval_recall > best_dev_recall and cfg['save_fpnet_model_file']:
+                    print("saving model to", cfg['save_fpnet_model_file'])
+                    torch.save(my_model.state_dict(), cfg['save_fpnet_model_file'])
+                    best_dev_recall = eval_recall
+            else:
+                if eval_recall > best_dev_recall and cfg['save_entity_model_file']:
+                    print("saving model to", cfg['save_entity_model_file'])
+                    torch.save(my_model.state_dict(), cfg['save_entity_model_file'])
+                    best_dev_recall = eval_recall
 
         except KeyboardInterrupt:
             break
@@ -477,11 +477,7 @@ def prediction_iterative_chain(cfg):
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     T = cfg['num_hop']
     include_eod = cfg['eod'] if 'eod' in cfg else True
-    load_model_files = ['model/complexwebq/best_relreasoner_14_1',
-                        'model/complexwebq/best_relreasoner_14_2',
-                        'model/complexwebq/best_relreasoner_14_3',
-                        'model/complexwebq/best_relreasoner_14_4',
-                        ]
+    load_model_files = ['model/complexwebq/best_relreasoner_decoder']
     # load_model_files = ['model/webqsp/best_relreasoner_1_1',
     #                     'model/webqsp/best_relreasoner_1_2',
     #                     ]
@@ -491,18 +487,17 @@ def prediction_iterative_chain(cfg):
     #                     ]
 
     prev_data = None
-    for num_hop in range(1, T + 1):
-        cfg['load_fpnet_model_file'] = load_model_files[num_hop - 1]
+    cfg['load_fpnet_model_file'] = load_model_files[0]
 
-        test_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, num_hop,
-                                          word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, data=prev_data)
+    test_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, T,
+                                        word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, data=prev_data)
 
-        my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
+    my_model = get_relreasoner_model(cfg, T, test_data.num_kb_relation, len(entity2id), len(word2id))
 
-        eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, relation2id, reverse_relation2id,
-                                            cfg, T=T, is_train=False, facts=facts, num_hop=num_hop, include_eod=include_eod)
+    eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, relation2id, reverse_relation2id,
+                                        cfg, T=T, is_train=False, facts=facts, num_hop=T, include_eod=include_eod)
 
-        prev_data = test_data.origin_data
+    prev_data = test_data.origin_data
 
     avg_hit_at_one = 0
     avg_f1 = 0
