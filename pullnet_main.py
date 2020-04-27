@@ -198,7 +198,7 @@ def inference_answer(facts, questions):
     return avg_hit_at_one / len(questions), avg_recall / len(questions), avg_f1 / len(questions)
 
 
-def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2id, reverse_relation2id, cfg, T=3, facts=None, num_hop=None, is_train=True, is_order=False, log_info=False, include_eod=True):
+def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2id, reverse_relation2id, cfg, T=3, facts=None, is_train=True, is_order=False, log_info=False, include_eod=True):
     # Evaluation
     # test_batch_size = 1
     my_model.eval()
@@ -213,7 +213,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     for iteration in tqdm(range(data.num_data // test_batch_size)):
         batch = data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
         loss, pred, _ = my_model(batch, facts=facts, relation2id=relation2id, reverse_relation2id=reverse_relation2id)
-        pred = pred.data.cpu().numpy().T
+        pred = pred.data.cpu().numpy().T.astype(np.int32)
         if not is_train and not is_order:
             for row in range(pred.shape[0]):
                 sample = data.data[iteration * test_batch_size + row]
@@ -222,7 +222,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
 
                 relations = []
                 for col in range(pred.shape[1]):
-                    relations.append(pred[row][col])
+                    relations.append(reverse_relation2id[pred[row][col]])
                 # data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
                 if relations:
                     if sample['ID'] not in rel_mapping:
@@ -251,7 +251,8 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
         #         for rel_id in pred_path:
         #             relations.append(reverse_relation2id[rel_id])
         #         data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
-        hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1])
+
+        hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1][1:].T.astype(np.int32))
         eval_hit_at_one.append(hit_at_one)
         eval_loss.append(loss.item())
         eval_recall.append(recall)
@@ -265,117 +266,40 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     ACCEPT_OTHER_BRANCH_ENTITIES = 20
     block_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
     for sample in origin_data:
-        if sample['ID'] not in rel_mapping:
-            continue
-        rel_mapping_dict = rel_mapping[sample['ID']]
-        sample['rel_map'] = rel_mapping_dict
-        prev_entities = {k: {k} for k in sample['entities']}
-        next_entities = dict()
-        for k in prev_entities:
-            if k not in rel_mapping_dict:
+        for num_hop in range(1, T + 1):
+            if sample['ID'] not in rel_mapping:
                 continue
-            entities = prev_entities[k]
-            top_relation = rel_mapping_dict[k][-1]
-            next_entities_set = set()
-            for entity in entities:
-                if top_relation != 'EOD' and entity in facts and top_relation in facts[entity]:
-                    next_entities_set.update(set(facts[entity][top_relation].keys()))
-            next_entities[k] = next_entities_set
-
-        # ground_truth_next_all_entities = set()
-        # for gt in sample['ground_truth_path']:
-        #     if num_hop * 2 < len(gt):
-        #         ground_truth_next_all_entities.add(gt[num_hop * 2])
-        # Choose intersection of next predicting entities from each topic entity path.
-        next_entity_map_items = list(next_entities.items())
-        for i in range(len(next_entity_map_items)):
-            ki, vi = next_entity_map_items[i][0], next_entity_map_items[i][1]
-            for hop in range(1, num_hop):
-                constraint_entities_dict = sample['entities_%d' % hop]
-                if ki in constraint_entities_dict:
-                    constraint_entities = constraint_entities_dict[ki]
-                    if len(constraint_entities & vi) > 0:
-                        vi = vi & constraint_entities
-                        next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
-            for j in range(len(next_entity_map_items)):
-                if i == j:
+            rel_mapping_dict = rel_mapping[sample['ID']]
+            sample['rel_map'] = rel_mapping_dict
+            if num_hop == 1:
+                prev_entities = {k: {k} for k in sample['entities']}
+            else:
+                prev_entities = sample['entities_%d' % (num_hop - 1)]
+            next_entities = dict()
+            for k in prev_entities:
+                if k not in rel_mapping_dict:
                     continue
-                kj, vj = next_entity_map_items[j][0], next_entity_map_items[j][1]
-                if len(vi & vj) > 0:
-                    inter_i_j = vi & vj
-                    vi = inter_i_j.copy()
-                    vj = inter_i_j.copy()
-                    next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
-                    next_entity_map_items[j] = (next_entity_map_items[j][0], vj)
-        next_entities = {k: v for k, v in next_entity_map_items}
-        visited_entities = set()
-        for prev_hop in range(1, num_hop):
-            if ('entities_%d' % prev_hop) in sample:
-                visited_entities.update(sample['entities_%d' % prev_hop])
-        next_entities = {k: {vv for vv in v if vv not in visited_entities} for k, v in next_entities.items()}
-        sample['entities_%d' % num_hop] = next_entities
-        cands_map = dict()
-        for k in next_entities:
-            entities = next_entities[k]
-            cur_relation_chain = list(rel_mapping_dict[k])
-            rel_cands = set()
-            for entity in entities:
-                rel_cands.update(list(facts[entity].keys()))
-            rel_cands = set(list(rel_cands)[:300])
-            if include_eod:
-                rel_cands.add('EOD')
-            rel_cands = list(filter(lambda x: x not in block_rels, rel_cands))
-            rel_cands = [cur_relation_chain + [k] for k in rel_cands]
-            cands_map[k] = rel_cands
-            if num_hop < T:
-                if k in sample['rel_chain_map'][str(num_hop + 1)]:
-                    sample['rel_chain_map'][str(num_hop + 1)][k]['cands'] = rel_cands
-                elif cur_relation_chain[-1] != 'EOD':
-                    sample['rel_chain_map'][str(num_hop + 1)][k] = {
-                        'ground_truth': [],
-                        'cands': rel_cands
-                    }
+                entities = prev_entities[k]
+                top_relation = rel_mapping_dict[k][num_hop - 1]
+                next_entities_set = set()
+                for entity in entities:
+                    if top_relation != 'EOD' and entity in facts and top_relation in facts[entity]:
+                        next_entities_set.update(set(facts[entity][top_relation].keys()))
+                next_entities[k] = next_entities_set
 
-        # min_index = int(np.argmin([len(item[1]) for item in next_entity_map_items]))
-        # s = next_entity_map_items[min_index][0]
-        # main_branch_next_hop_entities = list(next_entity_map_items[min_index][1])[:3]
-        # rel_tuple = rel_mapping_dict[s]
-        # next_hop_keys = set()
-        # constraints = set()
-        # # Add main branch next hop keys.
-        # for next_hop_entity in main_branch_next_hop_entities:
-        #     next_hop_keys.add('|||'.join([s, rel_tuple[-1], next_hop_entity]))
-        # # for v in entity_2_next_entity_map.values():
-        # #     print
-        # for other_branch_entity in next_entity_map_items:
-        #     if other_branch_entity[0] in main_branch_next_hop_entities:
-        #         continue
-        #     len_next_entities = len(other_branch_entity[1])
-        #     if len_next_entities < ACCEPT_OTHER_BRANCH_ENTITIES:
-        #         for next_hop_entity in list(other_branch_entity[1])[:3]:
-        #             next_hop_keys.add('|||'.join([s, rel_tuple[-1], next_hop_entity]))
-        #     constraints.update(list(other_branch_entity[1]))
-        # if 'constraints' not in sample:
-        #     sample['constraints'] = set()
-        # sample['constraints'].update(constraints)
-        # ground_truth_rel_chain_map = sample['rel_chain_map'][str(num_hop + 1)]
-        # next_hop_rel_chain_map = dict()
-        # for next_hop_key in next_hop_keys:
-        #     next_hop_rel_chain_map[next_hop_key] = dict()
-        #     next_entity = next_hop_key.rsplit('|||')[-1]
-        #     next_hop_rels = [next_hop_k_e for idx_k, next_hop_k_e in enumerate(next_hop_key.rsplit('|||')) if idx_k % 2 == 1]
-        #     new_cand_rels = list(facts[next_entity].keys()) + ['EOD']
-        #     new_cand_rels = list(filter(lambda x: x not in block_rels, new_cand_rels))
-        #     cands = [next_hop_rels + [k] for k in new_cand_rels]
-        #     next_hop_rel_chain_map[next_hop_key]['cands'] = cands
-        #     if next_hop_key in ground_truth_rel_chain_map:
-        #         next_hop_rel_chain_map[next_hop_key]['ground_truth'] = ground_truth_rel_chain_map[next_hop_key]['ground_truth']
-        #     else:
-        #         next_hop_rel_chain_map[next_hop_key]['ground_truth'] = []
-        # sample['rel_chain_map'][str(num_hop + 1)] = next_hop_rel_chain_map
-        # next_hop_all_entities = {k.split('|||')[-1] for k in next_hop_keys}
-        # ground_truth_next_hop_all_entities = {k.split('|||')[-1] for k in ground_truth_rel_chain_map.keys()}
-        # avg_recall += recall#len(next_hop_all_entities & ground_truth_next_hop_all_entities) / len(ground_truth_next_hop_all_entities)
+            # ground_truth_next_all_entities = set()
+            # for gt in sample['ground_truth_path']:
+            #     if num_hop * 2 < len(gt):
+            #         ground_truth_next_all_entities.add(gt[num_hop * 2])
+            # Choose intersection of next predicting entities from each topic entity path.
+            next_entity_map_items = list(next_entities.items())
+            next_entities = {k: v for k, v in next_entity_map_items}
+            visited_entities = set()
+            for prev_hop in range(1, num_hop):
+                if ('entities_%d' % prev_hop) in sample:
+                    visited_entities.update(sample['entities_%d' % prev_hop])
+            next_entities = {k: {vv for vv in v if vv not in visited_entities} for k, v in next_entities.items()}
+            sample['entities_%d' % num_hop] = next_entities
     # print('next_hop_entities mean', np.mean(item_lens))
     # print('next_hop_entities recall', avg_recall / len(origin_data))
 
@@ -429,8 +353,8 @@ def train_relreasoner(cfg, is_entity=False):
             for iteration in tqdm(range(train_data.num_data // cfg['batch_size'])):
                 batch = train_data.get_batch(iteration, cfg['batch_size'], cfg['fact_dropout'])
                 loss, pred, _ = my_model(batch, facts=facts, relation2id=relation2id, reverse_relation2id=reverse_relation2id)
-                pred = pred.data.cpu().numpy().reshape(pred.shape[1], -1).astype(np.int32)
-                hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1][1:].reshape(cfg['batch_size'], -1).astype(np.int32))
+                pred = pred.data.cpu().numpy().T.astype(np.int32)
+                hit_at_one, _, recall, _, max_acc = cal_accuracy(pred, batch[-1][1:].T.astype(np.int32))
                 train_hit_at_one.append(hit_at_one)
                 train_loss.append(loss.item())
                 train_recall.append(recall)
@@ -490,7 +414,7 @@ def prediction_iterative_chain(cfg):
     my_model = get_relreasoner_model(cfg, T, test_data.num_kb_relation, len(entity2id), len(word2id))
 
     eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, relation2id, reverse_relation2id,
-                                        cfg, T=T, is_train=False, facts=facts, num_hop=T, include_eod=include_eod)
+                                        cfg, T=T, is_train=False, facts=facts, include_eod=include_eod)
 
     prev_data = test_data.origin_data
 
@@ -505,80 +429,64 @@ def prediction_iterative_chain(cfg):
     for e in test_data.origin_data:
         type_data_map[e['compositionality_type']].append(e)
 
-    for k, v in type_data_map.items():
-        for e in tqdm(v):
-            # if e['sparql'].count('ORDER') > 0 or e['sparql'].count('FILTER') > 2:
-            #     total_hit_at_one += 1
-            #     continue
-            # if 'rel_map_2' in e:
-            #     ground_truth_dict = {k: tuple(v['ground_truth'][0]) for k, v in e['rel_chain_map']['2'].items()}
-            #     predicted_chain = e['rel_map_2']
-            #     if ground_truth_dict == predicted_chain:
-            #         avg_hit_at_one += 1
-            # elif 'rel_map_1' in e:
-            #     ground_truth_dict = {k: tuple(v['ground_truth'][0]) for k, v in e['rel_chain_map']['1'].items()}
-            #     predicted_chain = e['rel_map_1']
-            #     if ground_truth_dict == predicted_chain:
-            #         avg_hit_at_one += 1
-            # total_hit_at_one += 1
-            entities = e['entities']
-            entity2answers = dict()
-            final_answers = set()
-            min_answers = 1000000000
-            for entity in entities:
-                for hop in range(T, 0, -1):
-                    if 'entities_%d' % hop not in e:
-                        continue
-                    entity_map = e['entities_%d' % hop]
-                    if entity in entity_map and entity_map[entity]:
-                        entity2answers[entity] = entity_map[entity]
-                        break
-            for entity, answers in entity2answers.items():
-                if len(answers) < min_answers:
-                    min_answers = len(answers)
-                    final_answers = answers
-            for entity, answers in entity2answers.items():
-                if len(answers & final_answers) > 0:
-                    final_answers &= answers
-            any_answer = list(sorted(final_answers))[0] if final_answers else None
-            ground_truth_answers = set(e['answers'])
-            hit_at_one = (1 if any_answer and any_answer in ground_truth_answers else 0)
-            precision = 0
-            for answer in final_answers:
-                if answer in ground_truth_answers:
-                    precision += 1
-            precision = precision / len(final_answers) if len(final_answers) > 0 else 0
-            recall = 0
-            for gt_answer in ground_truth_answers:
-                if gt_answer in final_answers:
-                    recall += 1
-            recall = recall / len(ground_truth_answers) if len(ground_truth_answers) > 0 else 0
-            f1 = 0
-            if precision + recall > 0:
-                f1 = 2 * recall * precision / (precision + recall)
-            avg_precision += precision
-            avg_recall += recall
-            avg_f1 += f1
-            avg_hit_at_one += hit_at_one
-            total_hit_at_one += 1
+    for e in tqdm(test_data.origin_data):
+        entities = e['entities']
+        entity2answers = dict()
+        final_answers = set()
+        min_answers = 1000000000
+        for entity in entities:
+            for hop in range(T, 0, -1):
+                if 'entities_%d' % hop not in e:
+                    continue
+                entity_map = e['entities_%d' % hop]
+                if entity in entity_map and entity_map[entity]:
+                    entity2answers[entity] = entity_map[entity]
+                    break
+        for entity, answers in entity2answers.items():
+            if len(answers) < min_answers:
+                min_answers = len(answers)
+                final_answers = answers
+        for entity, answers in entity2answers.items():
+            if len(answers & final_answers) > 0:
+                final_answers &= answers
+        any_answer = list(sorted(final_answers))[0] if final_answers else None
+        ground_truth_answers = set(e['answers'])
+        hit_at_one = (1 if any_answer and any_answer in ground_truth_answers else 0)
+        precision = 0
+        for answer in final_answers:
+            if answer in ground_truth_answers:
+                precision += 1
+        precision = precision / len(final_answers) if len(final_answers) > 0 else 0
+        recall = 0
+        for gt_answer in ground_truth_answers:
+            if gt_answer in final_answers:
+                recall += 1
+        recall = recall / len(ground_truth_answers) if len(ground_truth_answers) > 0 else 0
+        f1 = 0
+        if precision + recall > 0:
+            f1 = 2 * recall * precision / (precision + recall)
+        avg_precision += precision
+        avg_recall += recall
+        avg_f1 += f1
+        avg_hit_at_one += hit_at_one
+        total_hit_at_one += 1
 
-            # if 'rel_chain_map' in e and e['rel_chain_map']:
-            #     last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
-            #     last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
-            #     predicted_chain = None
-            #     for i in range(4, 0, -1):
-            #         if ('rel_map_%d' % i) in e:
-            #             predicted_chain = e['rel_map_%d' % i]
-            #             break
-            #     if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
-            #         avg_interpretability += 1
-            # e['pred_answers'] = final_answers
-        print('=====================type%s=======================' % k)
-        print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
-        print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
-        print('avg_precision', avg_precision / total_hit_at_one)
-        print('avg_recall', avg_recall / total_hit_at_one)
-        print('avg_f1', avg_f1 / total_hit_at_one)
+        # if 'rel_chain_map' in e and e['rel_chain_map']:
+        #     last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
+        #     last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
+        #     predicted_chain = None
+        #     for i in range(4, 0, -1):
+        #         if ('rel_map_%d' % i) in e:
+        #             predicted_chain = e['rel_map_%d' % i]
+        #             break
+        #     if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
+        #         avg_interpretability += 1
+        # e['pred_answers'] = final_answers
+    print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
+    print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
+    print('avg_precision', avg_precision / total_hit_at_one)
+    print('avg_recall', avg_recall / total_hit_at_one)
+    print('avg_f1', avg_f1 / total_hit_at_one)
 
 
 def prediction_relreasoner(cfg):
