@@ -293,25 +293,25 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
         #         ground_truth_next_all_entities.add(gt[num_hop * 2])
         # Choose intersection of next predicting entities from each topic entity path.
         next_entity_map_items = list(next_entities.items())
-        for i in range(len(next_entity_map_items)):
-            ki, vi = next_entity_map_items[i][0], next_entity_map_items[i][1]
-            for hop in range(1, num_hop):
-                constraint_entities_dict = sample['entities_%d' % hop]
-                if ki in constraint_entities_dict:
-                    constraint_entities = constraint_entities_dict[ki]
-                    if len(constraint_entities & vi) > 0:
-                        vi = vi & constraint_entities
-                        next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
-            for j in range(len(next_entity_map_items)):
-                if i == j:
-                    continue
-                kj, vj = next_entity_map_items[j][0], next_entity_map_items[j][1]
-                if len(vi & vj) > 0:
-                    inter_i_j = vi & vj
-                    vi = inter_i_j.copy()
-                    vj = inter_i_j.copy()
-                    next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
-                    next_entity_map_items[j] = (next_entity_map_items[j][0], vj)
+        # for i in range(len(next_entity_map_items)):
+        #     ki, vi = next_entity_map_items[i][0], next_entity_map_items[i][1]
+        #     for hop in range(1, num_hop):
+        #         constraint_entities_dict = sample['entities_%d' % hop]
+        #         if ki in constraint_entities_dict:
+        #             constraint_entities = constraint_entities_dict[ki]
+        #             if len(constraint_entities & vi) > 0:
+        #                 vi = vi & constraint_entities
+        #                 next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
+        #     for j in range(len(next_entity_map_items)):
+        #         if i == j:
+        #             continue
+        #         kj, vj = next_entity_map_items[j][0], next_entity_map_items[j][1]
+        #         if len(vi & vj) > 0:
+        #             inter_i_j = vi & vj
+        #             vi = inter_i_j.copy()
+        #             vj = inter_i_j.copy()
+        #             next_entity_map_items[i] = (next_entity_map_items[i][0], vi)
+        #             next_entity_map_items[j] = (next_entity_map_items[j][0], vj)
         next_entities = {k: v for k, v in next_entity_map_items}
         visited_entities = set()
         for prev_hop in range(1, num_hop):
@@ -515,88 +515,87 @@ def prediction_iterative_chain(cfg):
     for e in test_data.origin_data:
         type_data_map[e['compositionality_type']].append(e)
 
-    for k, v in type_data_map.items():
-        for e in tqdm(v):
-            # if e['sparql'].count('ORDER') > 0 or e['sparql'].count('FILTER') > 2:
-            #     total_hit_at_one += 1
-            #     continue
-            # if 'rel_map_2' in e:
-            #     ground_truth_dict = {k: tuple(v['ground_truth'][0]) for k, v in e['rel_chain_map']['2'].items()}
-            #     predicted_chain = e['rel_map_2']
-            #     if ground_truth_dict == predicted_chain:
-            #         avg_hit_at_one += 1
-            # elif 'rel_map_1' in e:
-            #     ground_truth_dict = {k: tuple(v['ground_truth'][0]) for k, v in e['rel_chain_map']['1'].items()}
-            #     predicted_chain = e['rel_map_1']
-            #     if ground_truth_dict == predicted_chain:
-            #         avg_hit_at_one += 1
-            # total_hit_at_one += 1
-            entities = e['entities']
-            entity2rel_chain = dict()
-            entity2answers = dict()
-            final_answers = set()
-            min_answers = 1000000000
-            for entity in entities:
-                for hop in range(T, 0, -1):
-                    if 'rel_map_%d' % hop not in e:
-                        continue
-                    rel_map = e['rel_map_%d' % hop]
-                    if entity in rel_map and rel_map[entity]:
-                        entity2rel_chain[entity] = rel_map[entity]
-                        break
-                for hop in range(T, 0, -1):
-                    if 'entities_%d' % hop not in e:
-                        continue
-                    entity_map = e['entities_%d' % hop]
-                    if entity in entity_map and entity_map[entity]:
-                        entity2answers[entity] = entity_map[entity]
-                        break
-            for entity, answers in entity2answers.items():
-                if len(answers) < min_answers:
-                    min_answers = len(answers)
-                    final_answers = answers
-            for entity, answers in entity2answers.items():
-                if len(answers & final_answers) > 0:
-                    final_answers &= answers
-            any_answer = list(sorted(final_answers))[0] if final_answers else None
-            ground_truth_answers = set(e['answers'])
-            hit_at_one = (1 if any_answer and any_answer in ground_truth_answers else 0)
-            precision = 0
-            for answer in final_answers:
-                if answer in ground_truth_answers:
-                    precision += 1
-            precision = precision / len(final_answers) if len(final_answers) > 0 else 0
-            recall = 0
-            for gt_answer in ground_truth_answers:
-                if gt_answer in final_answers:
-                    recall += 1
-            recall = recall / len(ground_truth_answers) if len(ground_truth_answers) > 0 else 0
-            f1 = 0
-            if precision + recall > 0:
-                f1 = 2 * recall * precision / (precision + recall)
-            avg_precision += precision
-            avg_recall += recall
-            avg_f1 += f1
-            avg_hit_at_one += hit_at_one
-            total_hit_at_one += 1
+    for e in tqdm(test_data.origin_data):
+        # if e['sparql'].count('ORDER') > 0 or e['sparql'].count('FILTER') > 2:
+        #     total_hit_at_one += 1
+        #     continue
+        # if 'rel_map_2' in e:
+        #     ground_truth_dict = {k: tuple(v['ground_truth'][0]) for k, v in e['rel_chain_map']['2'].items()}
+        #     predicted_chain = e['rel_map_2']
+        #     if ground_truth_dict == predicted_chain:
+        #         avg_hit_at_one += 1
+        # elif 'rel_map_1' in e:
+        #     ground_truth_dict = {k: tuple(v['ground_truth'][0]) for k, v in e['rel_chain_map']['1'].items()}
+        #     predicted_chain = e['rel_map_1']
+        #     if ground_truth_dict == predicted_chain:
+        #         avg_hit_at_one += 1
+        # total_hit_at_one += 1
+        entities = e['entities']
+        entity2rel_chain = dict()
+        entity2answers = dict()
+        final_answers = set()
+        min_answers = 1000000000
+        for entity in entities:
+            for hop in range(T, 0, -1):
+                if 'rel_map_%d' % hop not in e:
+                    continue
+                rel_map = e['rel_map_%d' % hop]
+                if entity in rel_map and rel_map[entity]:
+                    entity2rel_chain[entity] = rel_map[entity]
+                    break
+            for hop in range(T, 0, -1):
+                if 'entities_%d' % hop not in e:
+                    continue
+                entity_map = e['entities_%d' % hop]
+                if entity in entity_map and entity_map[entity]:
+                    entity2answers[entity] = entity_map[entity]
+                    break
+        for entity, answers in entity2answers.items():
+            if len(answers) < min_answers:
+                min_answers = len(answers)
+                final_answers = answers
+        for entity, answers in entity2answers.items():
+            if len(answers & final_answers) > 0:
+                final_answers &= answers
+        any_answer = list(sorted(final_answers))[0] if final_answers else None
+        ground_truth_answers = set(e['answers'])
+        hit_at_one = (1 if any_answer and any_answer in ground_truth_answers else 0)
+        precision = 0
+        for answer in final_answers:
+            if answer in ground_truth_answers:
+                precision += 1
+        precision = precision / len(final_answers) if len(final_answers) > 0 else 0
+        recall = 0
+        for gt_answer in ground_truth_answers:
+            if gt_answer in final_answers:
+                recall += 1
+        recall = recall / len(ground_truth_answers) if len(ground_truth_answers) > 0 else 0
+        f1 = 0
+        if precision + recall > 0:
+            f1 = 2 * recall * precision / (precision + recall)
+        avg_precision += precision
+        avg_recall += recall
+        avg_f1 += f1
+        avg_hit_at_one += hit_at_one
+        total_hit_at_one += 1
 
-            if 'rel_chain_map' in e and e['rel_chain_map']:
-                last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
-                last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
-                predicted_chain = None
-                for i in range(4, 0, -1):
-                    if ('rel_map_%d' % i) in e:
-                        predicted_chain = e['rel_map_%d' % i]
-                        break
-                if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
-                    avg_interpretability += 1
-            e['pred_answers'] = final_answers
-        print('=====================type%s=======================' % k)
-        print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
-        print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
-        print('avg_precision', avg_precision / total_hit_at_one)
-        print('avg_recall', avg_recall / total_hit_at_one)
-        print('avg_f1', avg_f1 / total_hit_at_one)
+        if 'rel_chain_map' in e and e['rel_chain_map']:
+            last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
+            last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
+            predicted_chain = None
+            for i in range(4, 0, -1):
+                if ('rel_map_%d' % i) in e:
+                    predicted_chain = e['rel_map_%d' % i]
+                    break
+            if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
+                avg_interpretability += 1
+        e['pred_answers'] = final_answers
+    # print('=====================type%s=======================' % k)
+    print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
+    print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
+    print('avg_precision', avg_precision / total_hit_at_one)
+    print('avg_recall', avg_recall / total_hit_at_one)
+    print('avg_f1', avg_f1 / total_hit_at_one)
 
 
 def prediction_relreasoner(cfg):
