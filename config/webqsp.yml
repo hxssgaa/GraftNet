@@ -6,15 +6,15 @@ dev_data: 'dev_new.json'
 dev_documents: 'documents.json'
 test_data: 'test_new.json'
 test_documents: 'documents.json'
-fact_data: "datasets/webqsp/facts_new.json"
+fact_data: "datasets/webqsp/merged_facts.json"
 
 word2id: 'vocab.txt'
-relation2id: 'relations_decoder.txt'
+relation2id: 'relations_v2.txt'
 entity2id: 'entities.txt'
 word_emb_file: "word_emb_300d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_decoder_300d.npy"
+relation_emb_file: "relation_emb_decoder_v2_300d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 
 to_save_model: True
@@ -44,12 +44,12 @@ use_inverse_relation: False
 test_batch_size: 1
 
 # optimization
-num_epoch: 500
+num_epoch: 200
 batch_size: 10
 gradient_clip: 1
 learning_rate: 0.001
-lstm_dropout: 0.3
-linear_dropout: 0.2
+lstm_dropout: 0.5
+linear_dropout: 0.4
 is_debug: False
 
 

@@ -83,6 +83,7 @@ class RelReasonerDataLoader():
         stop_words = set(stopwords.words("english"))
         avg_total_words_recall = 0.0
         avg_question_words_recall = 0.0
+        avg_has_features = 0.0
         for idx_q, sample in tqdm(enumerate(self.data)):
             # build answers
             target_answer_path = list()
@@ -106,6 +107,7 @@ class RelReasonerDataLoader():
                     seed_entity_type = self.features[seed_entity]['types'][0] \
                         if isinstance(self.features[seed_entity]['types'], list) else self.features[seed_entity]['types']
                 if seed_entity_type:
+                    avg_has_features += 1
                     seed_entity_type = seed_entity_type.split('.')[-1].split('_')
                     for idx, word in enumerate(seed_entity_type):
                         if idx >= self.max_type_word:
@@ -160,6 +162,7 @@ class RelReasonerDataLoader():
             avg_question_words_recall += avg_qw_recall
         print('avg_total_words_recall', avg_total_words_recall / len(self.data))
         print('avg_question_words_recall', avg_question_words_recall / len(self.data))
+        print('avg_has_features', avg_has_features / len(self.data))
 
 
     def reset_batches(self, is_sequential=True):

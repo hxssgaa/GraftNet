@@ -29,15 +29,17 @@ class QuestionEncoder(nn.Module):
                     'torch.FloatTensor'), requires_grad=False)
             print('load question word emb')
 
-        self.question_text_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False, dropout=dropout)
-        self.seed_type_encoder = nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=1, bidirectional=False, dropout=dropout)
+        self.bidirection = False
+        self.question_text_encoder = nn.GRU(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=self.bidirection, dropout=dropout)#nn.LSTM(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=False, dropout=dropout)
+        self.seed_type_encoder = nn.GRU(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=self.bidirection, dropout=dropout)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, src_question, src_seed):
         batch_size = src_question.shape[0]
 
         q_embedded = self.dropout(self.embedding(src_question))  # batch_size, max_query_word, word_dim
-        q_output, (q_hidden, q_cell) = self.question_text_encoder(q_embedded)
+        # q_output, (q_hidden, q_cell) = self.question_text_encoder(q_embedded)
+        q_output, q_hidden = self.question_text_encoder(q_embedded, self.init_hidden2(self.n_layers * (self.bidirection + 1), q_embedded.shape[1], self.hid_dim))
 
         # q_hidden = q_hidden.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
         # q_hidden = q_hidden[-1]
@@ -45,16 +47,23 @@ class QuestionEncoder(nn.Module):
 
         # -------------------------Preserved-----------------------------------
         seed_emb = self.dropout(self.embedding(src_seed))
-        _, (seed_hidden, _) = self.seed_type_encoder(seed_emb)
+        _, seed_hidden = self.seed_type_encoder(seed_emb)
         q_seed_cat = torch.cat((q_hidden, seed_hidden), 0)
 
-        encoder_output, (hidden, cell) = self.question_text_encoder(q_seed_cat, (q_hidden, q_cell))
+        encoder_output, hidden = self.question_text_encoder(q_seed_cat, q_hidden)
 
-        return q_output, (hidden, cell)
+        if self.bidirection:
+            q_output = (q_output[:, :, :self.hid_dim] + q_output[:, :, self.hid_dim:]) / 2.0
+            hidden = (hidden[:self.n_layers, :, :] + hidden[self.n_layers:, :, :]) / 2.0
+
+        return q_output, hidden
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
         return (use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))),
                 use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))))
+
+    def init_hidden2(self, num_layer, batch_size, hidden_size):
+        return use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size)))
 
 
 class RelationChainDecoder(nn.Module):
@@ -73,7 +82,7 @@ class RelationChainDecoder(nn.Module):
                     'torch.FloatTensor'), requires_grad=False)
             print('load relation chain emb')
 
-        self.relation_encoder = nn.LSTM(emb_dim, hid_dim, n_layers, dropout=dropout)
+        self.relation_encoder = nn.GRU(emb_dim, hid_dim, n_layers, dropout=dropout)
         self.hidden_linear = nn.Linear(hid_dim, hid_dim)
         self.attn = nn.Linear(self.hid_dim * 2, self.max_len)
         self.attn_combine = nn.Linear(self.hid_dim * 2, self.hid_dim)
@@ -81,7 +90,7 @@ class RelationChainDecoder(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, input_relation, hidden, cell, encoder_output,
+    def forward(self, input_relation, hidden, encoder_output,
                 entities, facts, relation2id, reverse_relation2id):
         # input = [batch size]
         # hidden = [n layers * n directions, batch size, hid dim]
@@ -104,7 +113,7 @@ class RelationChainDecoder(nn.Module):
         output = self.attn_combine(output).unsqueeze(0)
         output = F.relu(output)
         # embedded = [1, batch size, emb dim]
-        output, (hidden, cell) = self.relation_encoder(output, (hidden, cell))
+        output, hidden = self.relation_encoder(output, hidden)
 
         # output = [seq len, batch size, hid dim * n directions]
         # hidden = [n layers * n directions, batch size, hid dim]
@@ -114,12 +123,12 @@ class RelationChainDecoder(nn.Module):
         # output = [1, batch size, hid dim]
         # hidden = [n layers, batch size, hid dim]
         # cell = [n layers, batch size, hid dim]
-        output = self.hidden_linear(output.squeeze(0))
+        output = self.dropout(self.hidden_linear(output.squeeze(0)))
 
         prediction = self.fc_out(output)
 
         # prediction = [batch size, output dim]
-        return prediction, hidden, cell
+        return prediction, hidden
 
 
 class RelReasoner(nn.Module):
@@ -156,7 +165,7 @@ class RelReasoner(nn.Module):
             each_entities = entities[idx]
             each_relation = reverse_relation2id[top1[idx].item()]
             next_entities = set()
-            for each_entity in each_entities[:3]:
+            for each_entity in each_entities:
                 if each_entity in facts and each_relation in facts[each_entity]:
                     next_entities.update(list(facts[each_entity][each_relation].keys()))
             next_entities = list(next_entities)
@@ -168,11 +177,11 @@ class RelReasoner(nn.Module):
         for idx in range(entities.shape[0]):
             each_topic_entities = entities[idx]
             next_relations = set()
-            for each_topic_entity in each_topic_entities[:3]:
+            for each_topic_entity in each_topic_entities:
                 if each_topic_entity in facts:
                     next_relations.update(list(facts[each_topic_entity].keys()))
             next_relations_ids = np.array([relation2id[e] for e in next_relations if e in relation2id])
-            if next_relations_ids.shape[0] > 0:
+            if len(next_relations_ids) > 0:
                 mask[idx][next_relations_ids] = 1
             else:
                 mask[idx][:] = 1
@@ -194,7 +203,7 @@ class RelReasoner(nn.Module):
             seed_entity_types = use_cuda(Variable(torch.from_numpy(seed_entity_types).type('torch.LongTensor')))
             targets = use_cuda(Variable(torch.from_numpy(targets).type('torch.LongTensor')))
 
-        encoder_output, (hidden, cell) = self.encoder(query_text, seed_entity_types)
+        encoder_output, hidden = self.encoder(query_text, seed_entity_types)
 
         #tensor to store decoder outputs
         outputs = use_cuda(torch.zeros(self.num_hop + 1, batch_size, self.num_relation))
@@ -212,7 +221,7 @@ class RelReasoner(nn.Module):
             # print('t1', time.time() - t1)
             # insert input token embedding, previous hidden and previous cell states
             # receive output tensor (predictions) and new hidden and cell states
-            output, hidden, cell = self.decoder(decoder_input, hidden, cell, encoder_output,
+            output, hidden = self.decoder(decoder_input, hidden, encoder_output,
                                                 entities, facts, relation2id, reverse_relation2id)
 
             # place predictions in a tensor holding predictions for each token
