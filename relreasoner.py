@@ -51,10 +51,10 @@ class RelReasoner(nn.Module):
         # self.hidden1 = nn.Linear(in_features=word_dim, out_features=entity_dim)
         # self.relation_weight = nn.Linear(in_features=3, out_features=1)
 
-        self.node_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=self.num_lstm_layer, batch_first=True, bidirectional=False)
-        self.relation_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=self.num_lstm_layer, batch_first=True, bidirectional=False)
-        self.seed_type_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=1, batch_first=True, bidirectional=False)
-        self.question_seed_encoder = nn.LSTM(input_size=word_dim, hidden_size=entity_dim, num_layers=1, batch_first=True, bidirectional=False)
+        self.node_encoder = nn.GRU(input_size=word_dim, hidden_size=entity_dim, num_layers=self.num_lstm_layer, batch_first=True, bidirectional=False)
+        self.relation_encoder = nn.GRU(input_size=word_dim, hidden_size=entity_dim, num_layers=self.num_lstm_layer, batch_first=True, bidirectional=False)
+        self.seed_type_encoder = nn.GRU(input_size=word_dim, hidden_size=entity_dim, num_layers=1, batch_first=True, bidirectional=False)
+        self.question_seed_encoder = nn.GRU(input_size=word_dim, hidden_size=entity_dim, num_layers=1, batch_first=True, bidirectional=False)
         self.sigmoid = nn.Sigmoid()
         # self.batch_norm = use_cuda(torch.nn.BatchNorm1d(word_dim if num_hop == 2 else 300))
         self.softmax_d1 = nn.Softmax(dim=1)
@@ -95,24 +95,24 @@ class RelReasoner(nn.Module):
         #
         # local_rel_emb = self.bert_model(relation_text)[0]
         query_word_emb = self.word_embedding(query_text)  # batch_size, max_query_word, word_dim
-        query_hidden_emb, (query_node_emb, _) = self.node_encoder(self.lstm_drop(query_word_emb),
-                                                                  self.init_hidden(self.num_lstm_layer, batch_size,
-                                                                                   self.entity_dim))  # 1, batch_size, entity_dim
+        query_hidden_emb, query_node_emb = self.node_encoder(self.lstm_drop(query_word_emb),
+                                                             self.init_hidden(self.num_lstm_layer, batch_size,
+                                                             self.entity_dim))  # 1, batch_size, entity_dim
         query_node_emb = query_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
         query_node_emb = query_node_emb[-1]
         query_node_emb = query_node_emb.view(batch_size, -1, 1)
 
         #-------------------------Preserved-----------------------------------
         seed_entity_types_emb = self.word_embedding(seed_entity_types)
-        _, (seed_entity_types_hidden_emb, _) = self.seed_type_encoder(self.lstm_drop(seed_entity_types_emb),
-                                                                      self.init_hidden(1, batch_size,
-                                                                                       self.entity_dim))
+        _, seed_entity_types_hidden_emb = self.seed_type_encoder(self.lstm_drop(seed_entity_types_emb),
+                                                                 self.init_hidden(1, batch_size,
+                                                                 self.entity_dim))
         seed_entity_types_hidden_emb = seed_entity_types_hidden_emb.view(batch_size, -1, 1)
         question_seed_entity = torch.cat((query_node_emb, seed_entity_types_hidden_emb), 2).view(batch_size, 2, -1)
 
-        _, (question_seed_entity_hidden_emb, _) = self.question_seed_encoder(question_seed_entity,
-                                                                             self.init_hidden(1, batch_size,
-                                                                                              self.entity_dim))
+        _, question_seed_entity_hidden_emb = self.question_seed_encoder(question_seed_entity,
+                                                                        self.init_hidden(1, batch_size,
+                                                                        self.entity_dim))
 
         question_seed_entity_hidden_emb = question_seed_entity_hidden_emb.view(batch_size, -1, 1)
         # -------------------------Preserved-----------------------------------
@@ -130,10 +130,10 @@ class RelReasoner(nn.Module):
 
         local_rel_emb = self.relation_embedding(local_kb_rel_path_rels)
         local_rel_emb = local_rel_emb.view(-1, local_rel_emb.shape[2], local_rel_emb.shape[3])
-        local_rel_hidden_emb, (local_rel_node_emb, _) = self.relation_encoder(self.lstm_drop(local_rel_emb),
-                                                                              self.init_hidden(self.num_lstm_layer,
-                                                                                               local_rel_emb.shape[0],
-                                                                                               self.entity_dim))
+        local_rel_hidden_emb, local_rel_node_emb = self.relation_encoder(self.lstm_drop(local_rel_emb),
+                                                                         self.init_hidden(self.num_lstm_layer,
+                                                                         local_rel_emb.shape[0],
+                                                                         self.entity_dim))
         local_rel_node_emb = local_rel_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
         local_rel_node_emb = local_rel_node_emb[-1]
         local_rel_node_emb = local_rel_node_emb.view(batch_size, max_rel_paths, -1)
@@ -163,5 +163,4 @@ class RelReasoner(nn.Module):
         return loss, pred, None  # pred, pred_dist
 
     def init_hidden(self, num_layer, batch_size, hidden_size):
-        return (use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))),
-                use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size))))
+        return use_cuda(torch.tensor(torch.zeros(num_layer, batch_size, hidden_size)))

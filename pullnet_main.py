@@ -393,7 +393,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
 
 
 def train_relreasoner(cfg, is_entity=False):
-    facts = load_json(cfg['fact_data'])
+    facts = None #load_json(cfg['fact_data'])
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
@@ -477,10 +477,13 @@ def prediction_iterative_chain(cfg):
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     T = cfg['num_hop']
     include_eod = cfg['eod'] if 'eod' in cfg else True
-    load_model_files = ['model/complexwebq/best_relreasoner_14_1',
-                        'model/complexwebq/best_relreasoner_14_2',
-                        'model/complexwebq/best_relreasoner_14_3',
-                        'model/complexwebq/best_relreasoner_14_4',
+    # load_model_files = ['model/webqsp/best_relreasoner_gru_1_1',
+    #                     'model/webqsp/best_relreasoner_gru_1_2',
+    #                     ]
+    load_model_files = ['model/complexwebq/best_relreasoner_gru_1',
+                        'model/complexwebq/best_relreasoner_gru_2',
+                        'model/complexwebq/best_relreasoner_gru_3',
+                        'model/complexwebq/best_relreasoner_gru_4',
                         ]
     # load_model_files = ['model/webqsp/best_relreasoner_1_1',
     #                     'model/webqsp/best_relreasoner_1_2',
@@ -511,9 +514,9 @@ def prediction_iterative_chain(cfg):
     avg_interpretability = 0
     total_hit_at_one = 0
 
-    type_data_map = defaultdict(list)
-    for e in test_data.origin_data:
-        type_data_map[e['compositionality_type']].append(e)
+    # type_data_map = defaultdict(list)
+    # for e in test_data.origin_data:
+    #     type_data_map[e['compositionality_type']].append(e)
 
     for e in tqdm(test_data.origin_data):
         # if e['sparql'].count('ORDER') > 0 or e['sparql'].count('FILTER') > 2:

@@ -125,13 +125,14 @@ class RelReasonerDataLoader():
 
             for i in range(min(len(rel_cands), self.max_local_path_rel)):
                 for j in range(self.num_hop):
-                    self.local_kb_rel_path_rels[idx_q][i][j] = self.relation2id[rel_cands[i][j]]
-                    key = tuple(self.local_kb_rel_path_rels[idx_q][i])
-                    if key in rel_ids:
-                        self.answer_dists[idx_q][i] = 1.0
+                    if rel_cands[i][j] in self.relation2id:
+                        self.local_kb_rel_path_rels[idx_q][i][j] = self.relation2id[rel_cands[i][j]]
+                        key = tuple(self.local_kb_rel_path_rels[idx_q][i])
+                        if key in rel_ids:
+                            self.answer_dists[idx_q][i] = 1.0
 
-            if np.sum(self.answer_dists[idx_q]) == 0:
-                print()
+            # if np.sum(self.answer_dists[idx_q]) == 0:
+            #     print()
 
             stop_words.update(question_word_list)
 

@@ -6,7 +6,7 @@ dev_data: 'dev_new.json'
 dev_documents: 'documents.json'
 test_data: 'test_new.json'
 test_documents: 'documents.json'
-fact_data: "datasets/webqsp/facts_new.json"
+fact_data: "datasets/webqsp/merged_facts.json"
 
 word2id: 'vocab.txt'
 relation2id: 'relations.txt'
@@ -21,8 +21,8 @@ to_save_model: True
 save_model_file: "model/webqsp/best_model_hybrid"
 pred_file: "model/webqsp/pred_hybrid"
 load_model_file: #"model/webqsp/best_model_hybrid"
-save_fpnet_model_file: "model/webqsp/best_relreasoner_1_2"
-load_fpnet_model_file: "model/webqsp/best_relreasoner_1_1"
+save_fpnet_model_file: "model/webqsp/best_relreasoner_gru_1_2"
+load_fpnet_model_file: #"model/webqsp/best_relreasoner_gru_1_1"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 
 # graph options
