@@ -396,7 +396,8 @@ def prediction_iterative_chain(cfg):
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     T = cfg['num_hop']
     include_eod = cfg['eod'] if 'eod' in cfg else True
-    load_model_files = ['model/complexwebq/best_relreasoner_decoder_tesst']
+    # load_model_files = ['model/complexwebq/best_relreasoner_decoder_tesst']
+    load_model_files = ['model/webqsp/best_relreasoner_decoder']
     # load_model_files = ['model/webqsp/best_relreasoner_1_1',
     #                     'model/webqsp/best_relreasoner_1_2',
     #                     ]
@@ -425,9 +426,9 @@ def prediction_iterative_chain(cfg):
     avg_interpretability = 0
     total_hit_at_one = 0
 
-    type_data_map = defaultdict(list)
-    for e in test_data.origin_data:
-        type_data_map[e['compositionality_type']].append(e)
+    # type_data_map = defaultdict(list)
+    # for e in test_data.origin_data:
+    #     type_data_map[e['compositionality_type']].append(e)
 
     for e in tqdm(test_data.origin_data):
         entities = e['entities']
