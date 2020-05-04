@@ -1,0 +1,68 @@
+max_local_path_rel: 229
+building word index ...
+preparing data ...
+5399it [00:02, 2596.51it/s]
+avg_total_words_recall 0.9335370747669322
+avg_question_words_recall 0.6737881705466897
+loaded relation_emb
+load word emb
+loading model from model/complexwebq/best_relreasoner_gru_1
+100%|█████████████████████████████████████████████████████████████████████████████████████████████| 269/269 [00:02<00:00, 104.34it/s]
+avg_loss 0.008536248553091388
+max_acc 1.0
+avg_hit_at_one 0.8812267657992561
+avg_recall 0.9601301115241624
+loading data from datasets/complexwebq/complex_dev_processed_new2.json
+100%|█████████████████████████████████████████████████████████████████████████████████████████| 3519/3519 [00:00<00:00, 91491.95it/s]
+max_local_path_rel: 301
+building word index ...
+preparing data ...
+5399it [00:02, 1857.79it/s]
+avg_total_words_recall 0.9335370747669322
+avg_question_words_recall 0.6737881705466897
+loaded relation_emb
+load word emb
+loading model from model/complexwebq/best_relreasoner_gru_2
+100%|██████████████████████████████████████████████████████████████████████████████████████████████| 269/269 [00:03<00:00, 71.65it/s]
+avg_loss 0.008835647494856097
+max_acc 0.8769516728624532
+avg_hit_at_one 0.8035315985130108
+avg_recall 0.8438661710037167
+loading data from datasets/complexwebq/complex_dev_processed_new2.json
+100%|████████████████████████████████████████████████████████████████████████████████████████| 3519/3519 [00:00<00:00, 191692.61it/s]
+max_local_path_rel: 300
+building word index ...
+preparing data ...
+5392it [00:03, 1756.05it/s]
+avg_total_words_recall 0.9336362512363997
+avg_question_words_recall 0.6737916753957638
+loaded relation_emb
+load word emb
+loading model from model/complexwebq/best_relreasoner_gru_3
+100%|██████████████████████████████████████████████████████████████████████████████████████████████| 269/269 [00:04<00:00, 63.76it/s]
+avg_loss 0.010965249164026818
+max_acc 0.8035315985130108
+avg_hit_at_one 0.7626394052044617
+avg_recall 0.7819702602230482
+loading data from datasets/complexwebq/complex_dev_processed_new2.json
+100%|████████████████████████████████████████████████████████████████████████████████████████| 3519/3519 [00:00<00:00, 256050.17it/s]
+max_local_path_rel: 300
+building word index ...
+preparing data ...
+5385it [00:02, 2650.39it/s]
+avg_total_words_recall 0.9335499845249149
+avg_question_words_recall 0.6737664159018373
+loaded relation_emb
+load word emb
+loading model from model/complexwebq/best_relreasoner_gru_4
+100%|██████████████████████████████████████████████████████████████████████████████████████████████| 269/269 [00:04<00:00, 57.28it/s]
+avg_loss 0.0109886536923766
+max_acc 0.7626394052044617
+avg_hit_at_one 0.7622676579925658
+avg_recall 0.7624535315985137
+100%|████████████████████████████████████████████████████████████████████████████████████████| 3519/3519 [00:00<00:00, 101337.15it/s]
+avg_hit_at_one 0.5797101449275363
+avg_interpretability 0.9258312020460358
+avg_precision 0.5753872082864744
+avg_recall 0.7705841230965346
+avg_f1 0.6026372621610546
