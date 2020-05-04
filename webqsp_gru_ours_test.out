@@ -1,0 +1,38 @@
+loading data from datasets/webqsp/test_new.json
+100%|████████████████████████████████████████████████████████████████████████████████████████| 1639/1639 [00:00<00:00, 245569.20it/s]
+max_local_path_rel: 73
+building word index ...
+preparing data ...
+1984it [00:01, 1856.25it/s]
+avg_total_words_recall 0.900957661290323
+avg_question_words_recall 1.0
+loaded relation_emb
+load word emb
+loading model from model/webqsp/best_relreasoner_gru_1_1
+100%|███████████████████████████████████████████████████████████████████████████████████████████| 1984/1984 [00:04<00:00, 425.77it/s]
+avg_loss 0.028797607169393433
+max_acc 1.0
+avg_hit_at_one 0.8024193548387096
+avg_recall 0.9354838709677419
+loading data from datasets/webqsp/test_new.json
+100%|████████████████████████████████████████████████████████████████████████████████████████| 1628/1628 [00:00<00:00, 203242.16it/s]
+max_local_path_rel: 301
+building word index ...
+preparing data ...
+1984it [00:01, 1447.77it/s]
+avg_total_words_recall 0.900957661290323
+avg_question_words_recall 1.0
+loaded relation_emb
+load word emb
+loading model from model/webqsp/best_relreasoner_gru_1_2
+100%|███████████████████████████████████████████████████████████████████████████████████████████| 1984/1984 [00:05<00:00, 378.11it/s]
+avg_loss 0.02100700405129427
+max_acc 0.7953629032258065
+avg_hit_at_one 0.7384072580645161
+avg_recall 0.7767137096774194
+100%|██████████████████████████████████████████████████████████████████████████████████████████| 1628/1628 [00:00<00:00, 2726.84it/s]
+avg_hit_at_one 0.7180589680589681
+avg_interpretability 0.9576167076167076
+avg_precision 0.7129856312595849
+avg_recall 0.7214662151065886
+avg_f1 0.6998006422714359

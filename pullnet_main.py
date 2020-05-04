@@ -477,14 +477,14 @@ def prediction_iterative_chain(cfg):
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     T = cfg['num_hop']
     include_eod = cfg['eod'] if 'eod' in cfg else True
-    # load_model_files = ['model/webqsp/best_relreasoner_gru_1_1',
-    #                     'model/webqsp/best_relreasoner_gru_1_2',
-    #                     ]
-    load_model_files = ['model/complexwebq/best_relreasoner_gru_1',
-                        'model/complexwebq/best_relreasoner_gru_2',
-                        'model/complexwebq/best_relreasoner_gru_3',
-                        'model/complexwebq/best_relreasoner_gru_4',
+    load_model_files = ['model/webqsp/best_relreasoner_gru_1_1',
+                        'model/webqsp/best_relreasoner_gru_1_2',
                         ]
+    # load_model_files = ['model/complexwebq/best_relreasoner_gru_1',
+    #                     'model/complexwebq/best_relreasoner_gru_2',
+    #                     'model/complexwebq/best_relreasoner_gru_3',
+    #                     'model/complexwebq/best_relreasoner_gru_4',
+    #                     ]
     # load_model_files = ['model/webqsp/best_relreasoner_1_1',
     #                     'model/webqsp/best_relreasoner_1_2',
     #                     ]
