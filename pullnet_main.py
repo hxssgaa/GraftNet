@@ -212,7 +212,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     rel_mapping = dict()
     for iteration in tqdm(range(data.num_data // test_batch_size)):
         batch = data.get_batch(iteration, test_batch_size, fact_dropout=0.0)
-        loss, pred, _ = my_model(batch, facts=facts, relation2id=relation2id, reverse_relation2id=reverse_relation2id)
+        loss, pred, _ = my_model(batch, facts=facts, relation2id=relation2id, reverse_relation2id=reverse_relation2id, teacher_forcing_ratio=0.0)
         pred = pred.data.cpu().numpy().T.astype(np.int32)
         if not is_train and not is_order:
             for row in range(pred.shape[0]):
