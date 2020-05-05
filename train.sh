@@ -1,1 +1,1 @@
-python pullnet_main.py --train-relreasoner config/complexwebq.yml
+python pullnet_main.py --train-relreasoner config/webqsp.yml
