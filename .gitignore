@@ -1,6 +1,7 @@
 .vscode
 *.pyc
 *.xlsx
+.ipynb_checkpoints
 datasets
 model
 
