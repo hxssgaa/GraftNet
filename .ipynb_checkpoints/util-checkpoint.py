@@ -36,7 +36,7 @@ def load_model(path):
 
 def load_dict(filename):
     word2id = dict()
-    with open(filename) as f_in:
+    with open(filename, encoding='utf-8') as f_in:
         for line in f_in:
             word = line.strip()
             word2id[word] = len(word2id)
@@ -101,6 +101,16 @@ def index_document_entities(documents, word2id, entity2id, max_document_word):
     
     return document_entity_indices, document_texts
 
+def cal_accuracy_2(pred, answer_dist):
+    num_hit_at_one = 0.0
+    num_precision = 0.0
+    num_recall = 0.0
+    num_f1 = 0.0
+    num_answerable = 0.0
+    num_hit_at_one = np.sum(pred ==answer_dist)
+    return num_hit_at_one / len(pred), num_precision / len(pred), num_recall / len(pred), num_f1 / len(pred), num_answerable / len(pred)
+
+
 def cal_accuracy(pred, answer_dist):
     """
     pred: batch_size
@@ -128,7 +138,7 @@ def cal_accuracy(pred, answer_dist):
         num_precision += precision
         num_recall += recall
         num_f1 += f1
-    for dist in answer_dist:
+    for i, dist in enumerate(answer_dist):
         if np.sum(dist) != 0:
             num_answerable += 1
     return num_hit_at_one / len(pred), num_precision / len(pred), num_recall / len(pred), num_f1 / len(pred), num_answerable / len(pred)
@@ -265,6 +275,8 @@ def save_json(list_, name):
 
 
 def load_json(file):
+    if not file:
+        return None
     try:
         with open(file, 'r') as f:
             data = json.load(f)
@@ -281,8 +293,8 @@ def load_fact(file):
             triple = line.split('|')
             triple = list(map(str.strip, triple))
             s, p, o = triple
-            s = s.replace('%', '')
-            o = o.replace('%', '')
+            # s = s.replace('%', '')
+            # o = o.replace('%', '')
             if s not in kb:
                 kb[s] = dict()
             if p not in kb[s]:
