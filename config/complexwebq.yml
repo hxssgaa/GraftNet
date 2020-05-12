@@ -19,8 +19,8 @@ to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid2"
 pred_file: "model/complexwebq/pred_hybrid"
 load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner_decoder_tesst"
-load_fpnet_model_file: #"model/complexwebq/best_relreasoner_decoder"
+save_fpnet_model_file: "model/complexwebq/best_relreasoner_decoder_dense"
+load_fpnet_model_file: "model/complexwebq/best_relreasoner_decoder_dense"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 load_entity_model_file:
 

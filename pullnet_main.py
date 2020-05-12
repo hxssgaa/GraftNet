@@ -265,6 +265,8 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     item_lens = []
     ACCEPT_OTHER_BRANCH_ENTITIES = 20
     block_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
+    err = 0
+    total = 0
     for sample in origin_data:
         for num_hop in range(1, T + 1):
             if sample['ID'] not in rel_mapping:
@@ -286,6 +288,9 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
                     if top_relation != 'EOD' and entity in facts and top_relation in facts[entity]:
                         next_entities_set.update(set(facts[entity][top_relation].keys()))
                 next_entities[k] = next_entities_set
+                if top_relation != 'EOD' and not next_entities_set:
+                    err += 1
+                total += 1
 
             # ground_truth_next_all_entities = set()
             # for gt in sample['ground_truth_path']:
@@ -300,6 +305,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
                     visited_entities.update(sample['entities_%d' % prev_hop])
             next_entities = {k: {vv for vv in v if vv not in visited_entities} for k, v in next_entities.items()}
             sample['entities_%d' % num_hop] = next_entities
+    # print('error_rate', err / total)
     # print('next_hop_entities mean', np.mean(item_lens))
     # print('next_hop_entities recall', avg_recall / len(origin_data))
 
@@ -396,8 +402,8 @@ def prediction_iterative_chain(cfg):
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     T = cfg['num_hop']
     include_eod = cfg['eod'] if 'eod' in cfg else True
-    # load_model_files = ['model/complexwebq/best_relreasoner_decoder_tesst']
-    load_model_files = ['model/webqsp/best_relreasoner_decoder']
+    load_model_files = [cfg['load_fpnet_model_file']]
+    # load_model_files = ['model/webqsp/best_relreasoner_decoder']
     # load_model_files = ['model/webqsp/best_relreasoner_1_1',
     #                     'model/webqsp/best_relreasoner_1_2',
     #                     ]

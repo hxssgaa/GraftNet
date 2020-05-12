@@ -14,6 +14,13 @@ from transformers import *
 VERY_NEG_NUMBER = -10000
 EOD_TOKEN = 8659 # TODO: fix magic number
 
+# Variants of combining question and topic entity vectors
+# lstm: LSTM
+# concat_dense: Combine question vector (q) and topic entity vector (t)] - concatenation + dense
+# concat_fusion: q + t + (q+t) + (q-t) + (q*t)
+# fusion: addition, subtraction, holographic merging
+CONFIG_COMBINE = 'concat_fusion'
+
 
 class QuestionEncoder(nn.Module):
     def __init__(self, input_dim, emb_dim, hid_dim, n_layers, dropout, pre_emb_file=None):
@@ -34,6 +41,13 @@ class QuestionEncoder(nn.Module):
         self.seed_type_encoder = nn.GRU(input_size=emb_dim, hidden_size=hid_dim, num_layers=n_layers, bidirectional=self.bidirection, dropout=dropout)
         self.dropout = nn.Dropout(dropout)
 
+        if CONFIG_COMBINE == 'concat_fusion':
+            self.combine_concat_dense = nn.Linear(4 * hid_dim, hid_dim)
+
+        if CONFIG_COMBINE == 'concat_dense':
+            self.combine_concat_dense = nn.Linear(2 * hid_dim, hid_dim)
+
+
     def forward(self, src_question, src_seed):
         batch_size = src_question.shape[0]
 
@@ -48,9 +62,32 @@ class QuestionEncoder(nn.Module):
         # -------------------------Preserved-----------------------------------
         seed_emb = self.dropout(self.embedding(src_seed))
         _, seed_hidden = self.seed_type_encoder(seed_emb)
-        q_seed_cat = torch.cat((q_hidden, seed_hidden), 0)
 
-        encoder_output, hidden = self.question_text_encoder(q_seed_cat, q_hidden)
+        if CONFIG_COMBINE == 'concat_dense':
+            q_seed_cat = torch.cat((q_hidden, seed_hidden), 2)
+            hidden = []
+            n_layers = q_seed_cat.shape[0]
+            b_size = q_seed_cat.shape[1]
+            for i in range(n_layers):
+                temp = q_seed_cat[i, :, :]
+                temp = temp.view(b_size, 2 * self.hid_dim)
+                hidden.append(self.combine_concat_dense(temp))
+            hidden = torch.stack(hidden)
+
+        elif CONFIG_COMBINE == 'concat_fusion':
+            q_seed_cat = torch.cat((q_hidden, seed_hidden, q_hidden+seed_hidden, q_hidden-seed_hidden), 2)
+            hidden = []
+            n_layers = q_seed_cat.shape[0]
+            b_size = q_seed_cat.shape[1]
+            for i in range(n_layers):
+                temp = q_seed_cat[i, :, :]
+                temp = temp.view(b_size, 4 * self.hid_dim)
+                hidden.append(self.combine_concat_dense(temp))
+            hidden = torch.stack(hidden)
+
+        elif CONFIG_COMBINE == 'lstm':
+            q_seed_cat = torch.cat((q_hidden, seed_hidden), 0)
+            encoder_output, hidden = self.question_text_encoder(q_seed_cat, q_hidden)
 
         if self.bidirection:
             q_output = (q_output[:, :, :self.hid_dim] + q_output[:, :, self.hid_dim:]) / 2.0
@@ -201,16 +238,15 @@ class RelReasoner(nn.Module):
         with torch.no_grad():
             query_text = use_cuda(Variable(torch.from_numpy(query_text).type('torch.LongTensor')))
             seed_entity_types = use_cuda(Variable(torch.from_numpy(seed_entity_types).type('torch.LongTensor')))
-            targets = use_cuda(Variable(torch.from_numpy(targets).type('torch.LongTensor')))
+            # first input to the decoder is the <sos> tokens
+            decoder_input = use_cuda(Variable(torch.from_numpy(targets[0, :]).type('torch.LongTensor')))
+            targets = use_cuda(Variable(torch.from_numpy(targets[1:, :]).type('torch.LongTensor')))
 
         encoder_output, hidden = self.encoder(query_text, seed_entity_types)
 
         #tensor to store decoder outputs
         outputs = use_cuda(torch.zeros(self.num_hop + 1, batch_size, self.num_relation))
         preds = use_cuda(torch.zeros(self.num_hop, batch_size))
-
-        # first input to the decoder is the <sos> tokens
-        decoder_input = targets[0, :]
 
         for t in range(1, self.num_hop + 1):
             # t1 = time.time()
@@ -243,11 +279,11 @@ class RelReasoner(nn.Module):
 
             # if teacher forcing, use actual next token as next input
             # if not, use predicted token
-            decoder_input = targets[t] if teacher_force else top1
+            decoder_input = targets[t - 1] if teacher_force else top1
 
         output_dim = outputs.shape[-1]
         outputs = outputs[1:].view(-1, output_dim)
-        targets = targets[1:].view(-1)
+        targets = targets.view(-1)
 
         loss = self.criterion(outputs, targets)
 
