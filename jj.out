@@ -10,3 +10,14 @@ avg_recall 0.7705790752688726
 avg_f1 0.6000568692048436
 
 Process finished with exit code 0
+
+
+
+avg_loss 3.560484558223717
+avg_hit_at_one 0.6648185483870968
+100%|██████████| 1628/1628 [00:00<00:00, 46553.18it/s]
+avg_hit_at_one 0.6498771498771498
+avg_interpretability 1.0
+avg_precision 0.6429490980872687
+avg_recall 0.6562012430122443
+avg_f1 0.6273910525032199

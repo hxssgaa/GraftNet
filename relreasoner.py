@@ -19,7 +19,7 @@ EOD_TOKEN = 8659 # TODO: fix magic number
 # concat_dense: Combine question vector (q) and topic entity vector (t)] - concatenation + dense
 # concat_fusion: q + t + (q+t) + (q-t) + (q*t)
 # fusion: addition, subtraction, holographic merging
-CONFIG_COMBINE = 'concat_fusion'
+CONFIG_COMBINE = 'lstm'
 
 
 class QuestionEncoder(nn.Module):

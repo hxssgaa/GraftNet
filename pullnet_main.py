@@ -431,10 +431,11 @@ def prediction_iterative_chain(cfg):
     avg_precision = 0
     avg_interpretability = 0
     total_hit_at_one = 0
+    total_interpretability = 0
 
-    # type_data_map = defaultdict(list)
-    # for e in test_data.origin_data:
-    #     type_data_map[e['compositionality_type']].append(e)
+    type_data_map = defaultdict(list)
+    for e in test_data.origin_data:
+        type_data_map[len(e['entities'])].append(e)
 
     for e in tqdm(test_data.origin_data):
         entities = e['entities']
@@ -478,19 +479,21 @@ def prediction_iterative_chain(cfg):
         avg_hit_at_one += hit_at_one
         total_hit_at_one += 1
 
-        # if 'rel_chain_map' in e and e['rel_chain_map']:
-        #     last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
-        #     last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
-        #     predicted_chain = None
-        #     for i in range(4, 0, -1):
-        #         if ('rel_map_%d' % i) in e:
-        #             predicted_chain = e['rel_map_%d' % i]
-        #             break
-        #     if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
-        #         avg_interpretability += 1
+        if 'rel_chain_map' in e and e['rel_chain_map']:
+            last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
+            last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
+            if 'rel_map' in e:
+                predicted_chain = {k: tuple(v) for k, v in e['rel_map'].items()}
+                if predicted_chain == last_ground_truth_chain and hit_at_one == 1:
+                    avg_interpretability += 1
+                if hit_at_one == 1:
+                    total_interpretability += 1
+                    # if predicted_chain != last_ground_truth_chain:
+                    #     print('')
+
         # e['pred_answers'] = final_answers
     print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
-    print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
+    print('avg_interpretability',  avg_interpretability / total_interpretability)
     print('avg_precision', avg_precision / total_hit_at_one)
     print('avg_recall', avg_recall / total_hit_at_one)
     print('avg_f1', avg_f1 / total_hit_at_one)
