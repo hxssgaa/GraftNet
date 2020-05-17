@@ -204,7 +204,7 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     my_model.eval()
     my_model.teacher_force = False
     eval_hit_at_one, eval_loss, eval_recall, eval_max_acc = [], [], [], []
-    id2entity = {idx: entity for entity, idx in entity2id.items()}
+    # id2entity = {idx: entity for entity, idx in entity2id.items()}
     data.reset_batches(is_sequential = True)
     if log_info:
         f_pred = open(cfg['pred_file'], 'w')
@@ -322,7 +322,7 @@ def train_relreasoner(cfg, is_entity=False):
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
-    entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
+    entity2id = None
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     num_hop = cfg['num_hop']
 
@@ -339,7 +339,7 @@ def train_relreasoner(cfg, is_entity=False):
         valid_data = RelReasonerObjectDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, num_hop,
                                            word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1)
 
-    my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, len(entity2id), len(word2id), is_entity=is_entity)
+    my_model = get_relreasoner_model(cfg, num_hop, valid_data.num_kb_relation, 0, len(word2id), is_entity=is_entity)
     trainable_parameters = [p for p in my_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(trainable_parameters, lr=cfg['learning_rate'])
     for p in my_model.parameters():
