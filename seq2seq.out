@@ -1,0 +1,10 @@
+avg_loss 2.8565506675551013
+avg_hit_at_one 0.7036290322580645
+100%|██████████| 1628/1628 [00:00<00:00, 36998.87it/s]
+avg_hit_at_one 0.6916461916461917
+avg_interpretability 0.9156305506216696
+avg_precision 0.6839638798833032
+avg_recall 0.6963735909131445
+avg_f1 0.6668713186528917
+
+Process finished with exit code 0
