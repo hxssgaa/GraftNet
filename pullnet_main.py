@@ -398,7 +398,7 @@ def prediction_iterative_chain(cfg):
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
     relation2id = load_dict(cfg['data_folder'] + cfg['relation2id'])
-    entity2id = load_dict(cfg['data_folder'] + cfg['entity2id'])
+    entity2id = None
     reverse_relation2id = {v: k for k, v in relation2id.items()}
     T = cfg['num_hop']
     include_eod = cfg['eod'] if 'eod' in cfg else True
@@ -418,7 +418,7 @@ def prediction_iterative_chain(cfg):
     test_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, T,
                                         word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, data=prev_data)
 
-    my_model = get_relreasoner_model(cfg, T, test_data.num_kb_relation, len(entity2id), len(word2id))
+    my_model = get_relreasoner_model(cfg, T, test_data.num_kb_relation, 0, len(word2id))
 
     eval_recall = inference_relreasoner(my_model, cfg['test_batch_size'], test_data, entity2id, relation2id, reverse_relation2id,
                                         cfg, T=T, is_train=False, facts=facts, include_eod=include_eod)

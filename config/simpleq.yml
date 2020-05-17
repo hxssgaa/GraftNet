@@ -5,12 +5,12 @@ dev_data: 'dev.json'
 test_data: 'test.json'
 
 word2id: 'vocab.txt'
-relation2id: 'relations.txt'
+relation2id: 'relations_v2.txt'
 entity2id: 'entities_v2.txt'
 word_emb_file: "word_emb_300d.npy"
 entity_emb_file: #"entity_emb_100d.npy"
 entity_kge_file: #"entity_kge_100d.npy"
-relation_emb_file: "relation_emb_300d.npy"
+relation_emb_file: "relation_emb_v2_300d.npy"
 relation_kge_file: #"relation_kge_100d.npy"
 fact_data: "datasets/simpleq/facts.json"
 eod: 0
