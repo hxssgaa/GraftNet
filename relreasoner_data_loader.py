@@ -147,6 +147,8 @@ class RelReasonerDataLoader():
                 # question_word_spt = clean_text(sample['question'])
                 # question_word_spt = list(filter(lambda x: x not in question_word_list, question_word_spt))
                 # question_word_spt = [e[0] for e in parsed if e[1] in KEEP_TAG]
+                if not question_word_spt:
+                    question_word_spt = tokens
                 cache_question[sample['question']] = question_word_spt
             count_query_length[len(question_word_spt)] += 1
             avg_qw_recall = 0

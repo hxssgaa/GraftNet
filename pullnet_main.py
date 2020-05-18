@@ -225,6 +225,8 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
                     relations.append(reverse_relation2id[pred[row][col]])
                 # data.data[iteration * test_batch_size + row]['pred_rel_path'] = relations
                 if relations:
+                    if 'ID' not in sample:
+                        sample['ID'] = iteration * test_batch_size + row
                     if sample['ID'] not in rel_mapping:
                         rel_mapping[sample['ID']] = dict()
                     rel_mapping_dict = rel_mapping[sample['ID']]
