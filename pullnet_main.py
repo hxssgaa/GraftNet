@@ -269,7 +269,9 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
     block_rels = {'Equals', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual', 'NotEquals'}
     err = 0
     total = 0
-    for sample in origin_data:
+    for idx, sample in enumerate(origin_data):
+        if 'ID' not in sample:
+            sample['ID'] = idx
         for num_hop in range(1, T + 1):
             if sample['ID'] not in rel_mapping:
                 continue
