@@ -130,7 +130,7 @@ class RelReasoner(nn.Module):
             local_rel_node_emb = local_rel_node_emb[-1]
             local_rel_node_emb = local_rel_node_emb.view(batch_size, max_rel_paths, -1)
         else:
-            relation_text = relation_text.view(-1, relation_text.shape[3])
+            relation_text = relation_text.view(-1, relation_text.shape[3] * num_hop)
             rel_word_emb = self.word_embedding(relation_text)
             _, rel_hidden_emb = self.relation_encoder(self.lstm_drop(rel_word_emb),
                                                            self.init_hidden(self.num_lstm_layer, relation_text.shape[0],
