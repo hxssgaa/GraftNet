@@ -41,7 +41,7 @@ kge_dim: 300
 pagerank_lambda: 0.8
 fact_scale: 3
 use_inverse_relation: False
-test_batch_size: 1
+test_batch_size: 10
 
 # optimization
 num_epoch: 100

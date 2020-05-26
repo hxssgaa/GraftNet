@@ -9,6 +9,7 @@ from transformers import *
 
 
 VERY_NEG_NUMBER = -100000000000
+USE_RELATION_WORDS = True
 
 
 class RelReasoner(nn.Module):
@@ -118,25 +119,25 @@ class RelReasoner(nn.Module):
         # -------------------------Preserved-----------------------------------
 
         # ----------------------Original----------------------
-        # relation_text = relation_text.view(-1, relation_text.shape[3])
-        # rel_word_emb = self.word_embedding(relation_text)
-        # _, (rel_hidden_emb, _) = self.relation_encoder(self.lstm_drop(rel_word_emb),
-        #                                                self.init_hidden(self.num_lstm_layer, relation_text.shape[0],
-        #                                                                 self.entity_dim))
-        # rel_hidden_emb = rel_hidden_emb[-1]
-        # rel_hidden_emb = rel_hidden_emb.view(batch_size, max_rel_paths, -1, max_rel_num)
-        # rel_hidden_emb = self.relation_weight(rel_hidden_emb).squeeze(3)
+        if not USE_RELATION_WORDS:
+            local_rel_emb = self.relation_embedding(local_kb_rel_path_rels)
+            local_rel_emb = local_rel_emb.view(-1, local_rel_emb.shape[2], local_rel_emb.shape[3])
+            local_rel_hidden_emb, local_rel_node_emb = self.relation_encoder(self.lstm_drop(local_rel_emb),
+                                                                             self.init_hidden(self.num_lstm_layer,
+                                                                                              local_rel_emb.shape[0],
+                                                                                              self.entity_dim))
+            local_rel_node_emb = local_rel_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
+            local_rel_node_emb = local_rel_node_emb[-1]
+            local_rel_node_emb = local_rel_node_emb.view(batch_size, max_rel_paths, -1)
+        else:
+            relation_text = relation_text.view(-1, relation_text.shape[3])
+            rel_word_emb = self.word_embedding(relation_text)
+            _, rel_hidden_emb = self.relation_encoder(self.lstm_drop(rel_word_emb),
+                                                           self.init_hidden(self.num_lstm_layer, relation_text.shape[0],
+                                                                            self.entity_dim))
+            rel_hidden_emb = rel_hidden_emb[-1]
+            local_rel_node_emb = rel_hidden_emb.view(batch_size, max_rel_paths, -1)
         # ----------------------Original----------------------
-
-        local_rel_emb = self.relation_embedding(local_kb_rel_path_rels)
-        local_rel_emb = local_rel_emb.view(-1, local_rel_emb.shape[2], local_rel_emb.shape[3])
-        local_rel_hidden_emb, local_rel_node_emb = self.relation_encoder(self.lstm_drop(local_rel_emb),
-                                                                         self.init_hidden(self.num_lstm_layer,
-                                                                         local_rel_emb.shape[0],
-                                                                         self.entity_dim))
-        local_rel_node_emb = local_rel_node_emb.squeeze(dim=0).unsqueeze(dim=1)  # batch_size, 1, entity_dim
-        local_rel_node_emb = local_rel_node_emb[-1]
-        local_rel_node_emb = local_rel_node_emb.view(batch_size, max_rel_paths, -1)
 
         # Attention
         div = float(np.sqrt(self.entity_dim))

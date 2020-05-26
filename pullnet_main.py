@@ -258,6 +258,8 @@ def inference_relreasoner(my_model, test_batch_size, data, entity2id, relation2i
         eval_loss.append(loss.item())
         eval_recall.append(recall)
         eval_max_acc.append(max_acc)
+        for row in range(pred.shape[0]):
+            data.data[iteration * test_batch_size + row]['hit_at_one'] = batch[-1][row, pred[row][0]] != 0
 
     avg_recall = 0
     total = 0
@@ -469,6 +471,13 @@ def train_relreasoner(cfg, is_entity=False):
 
 
 def prediction_iterative_chain(cfg):
+    entities_data = dict()
+    # with open('C://Users/hxssg/Developer/GraftNet/datasets/webqsp/full/test.json') as f:
+    #     for l in f.readlines():
+    #         l_json = json.loads(l)
+    #         entities_data[l_json['id']] = list(
+    #             map(lambda x: x['kb_id'].replace('<fb:', '').replace('>', ''), l_json['entities']))
+    entities_data = load_json('datasets/webqsp/qid2entities.json')
     facts = load_json(cfg['fact_data'])
     features = load_json('datasets/complexwebq/features.json')
     word2id = load_dict(cfg['data_folder'] + cfg['word2id'])
@@ -498,7 +507,7 @@ def prediction_iterative_chain(cfg):
         cfg['load_fpnet_model_file'] = load_model_files[num_hop - 1]
 
         test_data = RelReasonerDataLoader(cfg['data_folder'] + cfg['test_data'], facts, features, num_hop,
-                                          word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, data=prev_data)
+                                          word2id, relation2id, cfg['max_query_word'], cfg['use_inverse_relation'], 1, data=prev_data, entities_data=entities_data, teacher_force=True)
 
         my_model = get_relreasoner_model(cfg, num_hop, test_data.num_kb_relation, len(entity2id), len(word2id))
 
@@ -512,11 +521,36 @@ def prediction_iterative_chain(cfg):
     avg_recall = 0
     avg_precision = 0
     avg_interpretability = 0
+    total_interpretability = 0
     total_hit_at_one = 0
 
-    # type_data_map = defaultdict(list)
-    # for e in test_data.origin_data:
-    #     type_data_map[e['compositionality_type']].append(e)
+    exclude_special_hit_at_one = 0
+    total = 0
+    wrong_but_correct = 0
+    wrong_all = 0
+    for e in test_data.data:
+        filter = e['sparql'].lower().count('filter') > 2
+        orderby = e['sparql'].lower().count('order by') >= 1
+        if not filter and not orderby and 'hit_at_one' in e:
+            hit_at_one = e['hit_at_one']
+            exclude_special_hit_at_one += hit_at_one
+        if 'hit_at_one' in e:
+            total += 1
+
+            # if e['old_entities'] != entities_data[e['id']]:
+            #     if e['hit_at_one'] == 1:
+            #         wrong_but_correct += 1
+            #     wrong_all += 1
+    print('exclude_special_hit_at_one', exclude_special_hit_at_one / total)
+    # print('wrong_but_correct', wrong_but_correct / wrong_all)
+
+    type_data_map = defaultdict(list)
+    for e in test_data.origin_data:
+        # type_data_map[e['compositionality_type']].append(e)
+        type_data_map[len(e['entities'])].append(e)
+
+    wrong_but_correct = 0
+    wrong_all = 0
 
     for e in tqdm(test_data.origin_data):
         # if e['sparql'].count('ORDER') > 0 or e['sparql'].count('FILTER') > 2:
@@ -582,6 +616,14 @@ def prediction_iterative_chain(cfg):
         avg_hit_at_one += hit_at_one
         total_hit_at_one += 1
 
+        # old_entities = e['old_entities'] if 'old_entities' in e else e['entities']
+        # if old_entities != entities_data[e['id']]:
+        #     if hit_at_one == 1:
+        #         wrong_but_correct += 1
+        #     else:
+        #         debug = 1 #Nothing
+        #     wrong_all += 1
+
         if 'rel_chain_map' in e and e['rel_chain_map']:
             last_ground_truth_chain = e['rel_chain_map'][str(len(e['rel_chain_map']))]
             last_ground_truth_chain = {k: tuple(v['ground_truth'][0]) for k, v in last_ground_truth_chain.items()}
@@ -590,12 +632,15 @@ def prediction_iterative_chain(cfg):
                 if ('rel_map_%d' % i) in e:
                     predicted_chain = e['rel_map_%d' % i]
                     break
-            if predicted_chain != last_ground_truth_chain and hit_at_one == 1:
+            if predicted_chain == last_ground_truth_chain and hit_at_one == 1:
                 avg_interpretability += 1
+            if hit_at_one == 1:
+                total_interpretability += 1
         e['pred_answers'] = final_answers
     # print('=====================type%s=======================' % k)
     print('avg_hit_at_one', avg_hit_at_one / total_hit_at_one)
-    print('avg_interpretability',  1 - avg_interpretability / total_hit_at_one)
+    # print('wrong_but_correct', wrong_but_correct / wrong_all)
+    print('avg_interpretability',  avg_interpretability / total_interpretability)
     print('avg_precision', avg_precision / total_hit_at_one)
     print('avg_recall', avg_recall / total_hit_at_one)
     print('avg_f1', avg_f1 / total_hit_at_one)

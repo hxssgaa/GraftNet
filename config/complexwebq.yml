@@ -19,7 +19,7 @@ to_save_model: True
 save_model_file: "model/complexwebq/best_model_hybrid2"
 pred_file: "model/complexwebq/pred_hybrid"
 load_model_file: "model/complexwebq/best_model_hybrid"
-save_fpnet_model_file: "model/complexwebq/best_relreasoner_gru_4"
+save_fpnet_model_file: "model/complexwebq/best_relreasoner_gru_lstm_1"
 load_fpnet_model_file: #"model/complexwebq/best_relreasoner_14_3"
 save_entity_model_file: "model/complexwebq/best_relreasoner_entity.1"
 load_entity_model_file:
@@ -32,7 +32,7 @@ use_doc: False
 num_layer: 3
 max_query_word: 20
 max_document_word: 50
-num_hop: 4
+num_hop: 1
 
 entity_dim: 300
 word_dim: 300

@@ -1,4 +1,6 @@
 import itertools
+import re
+
 import nltk
 import numpy as np
 import copy
@@ -14,7 +16,7 @@ KEEP_TAG = ['IN', 'NN', 'NNS', 'NNP', 'NNPS', 'TO', 'VB', 'VBD', 'VBG', 'VBN', '
 
 
 class RelReasonerDataLoader():
-    def __init__(self, data_file, facts, features, num_hop, word2id, relation2id, max_query_word, use_inverse_relation, div, teacher_force=False, data=None):
+    def __init__(self, data_file, facts, features, num_hop, word2id, relation2id, max_query_word, use_inverse_relation, div, teacher_force=False, data=None, entities_data=None):
         self.use_inverse_relation = use_inverse_relation
         self.max_local_entity = 0
         self.max_facts = 0
@@ -41,6 +43,9 @@ class RelReasonerDataLoader():
         for line in tqdm(f_in):
             if 'rel_chain_map' not in line or not line['rel_chain_map'] or not line['answers']:
                 continue
+            if entities_data is not None and line['id'] in entities_data:
+                line['old_entities'] = line['entities']
+                # line['entities'] = entities_data[line['id']]
             self.origin_data.append(line)
             rel_chain_map = line['rel_chain_map'][str(self.num_hop)]
             for k, v in rel_chain_map.items():
@@ -67,7 +72,7 @@ class RelReasonerDataLoader():
         print('preparing data ...')
         self.seed_entity_types = np.full((self.num_data, self.max_type_word), len(self.word2id), dtype=int)
         self.local_kb_rel_path_rels = np.full((self.num_data, self.max_local_path_rel, self.num_hop), len(self.relation2id), dtype=int)
-        self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.max_rel_num, self.max_query_word), len(self.word2id), dtype=int)
+        self.relation_texts = np.full((self.num_data, self.max_local_path_rel, self.num_hop, self.max_query_word // 3), len(self.word2id), dtype=int)
         self.query_texts = np.full((self.num_data, self.max_query_word), len(self.word2id), dtype=int)
         self.answer_dists = np.zeros((self.num_data, self.max_local_path_rel), dtype=float)
 
@@ -130,6 +135,13 @@ class RelReasonerDataLoader():
                         key = tuple(self.local_kb_rel_path_rels[idx_q][i])
                         if key in rel_ids:
                             self.answer_dists[idx_q][i] = 1.0
+                        tokens = re.split(r'[._]', rel_cands[i][j])
+                        for k, word in enumerate(tokens):
+                            if k < (self.max_query_word // 3):
+                                if word in self.word2id:
+                                    self.relation_texts[idx_q][i][j][k] = self.word2id[word]
+                                else:
+                                    self.relation_texts[idx_q][i][j][k] = self.word2id['__unk__']
 
             # if np.sum(self.answer_dists[idx_q]) == 0:
             #     print()
